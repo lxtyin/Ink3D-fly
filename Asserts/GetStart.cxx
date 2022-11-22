@@ -10,11 +10,10 @@ const int SCREEN_W = 1680;
 const int SCREEN_H = 960;
 //#define FREE_FLY //fly method.
 
-
 Ink::Scene scene;
 Ink::MyViewer viewer;
 Ink::Renderer renderer;
-Ink::Instance *horizontal_box, *vertical_box;
+Ink::Instance *horizontal_box, *vertical_box, *scene_obj;
 Ink::Instance *plane; //use 3 layer box to rotate around self-space.
 float speed = 0;
 
@@ -27,11 +26,11 @@ void conf(Settings& t) {
     t.height = SCREEN_H;
     t.show_cursor = false;
     t.lock_cursor = true;
+    t.msaa = 4;
     t.background_color = Ink::Vec3(1, 0.93, 0.8);
 }
 
 void load() {
-
     // load parper plane, forward: z
     horizontal_box = Ink::Instance::create();
     vertical_box   = Ink::Instance::create();
@@ -49,19 +48,23 @@ void load() {
     }
     scene.set_material("defalut", &materials["Scene_-_Root"]);
 
-//    Ink::Mesh *scene_mesh = new Ink::Mesh(Ink::Loader::load_obj(M_PATH "house/low_poly_winter_scene.obj")[0]);
-//    normalize_mesh(scene_mesh);
-//    Ink::Instance *scene_obj = Ink::Instance::create();
-//    scene_obj->mesh = scene_mesh;
-//    scene.add(scene_obj);
-//    load_all_mtl("house/material.lib");
-    Ink::Instance *scene_obj = Ink::load_model(M_PATH "house/low_poly_winter_scene.glb", scene);
-    scene_obj->scale = Vec3(10, 10, 10);
+//    scene_obj = Ink::load_model(M_PATH "lakeside/lakeside_-_exterior_scene.glb", scene);
+    scene_obj = Ink::load_model(M_PATH "house/low_poly_winter_scene.glb", scene);
+    scene_obj->scale = Vec3(5, 5, 5);
 
+    // light
     Ink::HemisphereLight* light = new Ink::HemisphereLight();
-	light->ground_color = Ink::Vec3(0.5, 0.5, 0.5);
-	light->direction = Ink::Vec3(0, 0, -1);
+	light->ground_color = Ink::Vec3(0.6, 0.6, 0.6);
+    light->intensity = 0.4;
+	light->direction = Ink::Vec3(0, -1, 0);
 	scene.add_light(light);
+    Ink::PointLight *plight = new Ink::PointLight();
+    plight->color = Ink::Vec3(1, 1, 0);
+    plight->intensity = 1.5;
+    plight->distance = 30;
+    plight->position = Vec3(20, 10, -15);
+    scene.add_light(plight);
+
 
     viewer = Ink::MyViewer(Ink::PerspCamera(75 * Ink::DEG_TO_RAD, 1.77, 0.5, 10000), 30);
     viewer.set_position(Ink::Vec3(0, 0, -2));

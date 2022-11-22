@@ -24,3 +24,15 @@ void normalize_mesh(Ink::Mesh *m){
         z -= mid_z;
     }
 }
+
+void Fuck_ids(Ink::Mesh *m, std::vector<int> &idx){
+    Ink::Mesh *tmp = new Ink::Mesh(*m); //copy
+    m->vertex.clear();
+    m->normal.clear();
+    m->uv.clear();
+    for(int i: idx){
+        m->vertex.push_back(tmp->vertex[i]);
+        m->normal.push_back(tmp->normal[i]);
+        m->uv.push_back(tmp->uv[i]);
+    }
+}

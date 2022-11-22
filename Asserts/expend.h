@@ -9,3 +9,11 @@
  * \param m the mesh
  */
 void normalize_mesh(Ink::Mesh *m);
+
+/**
+ * rebuild vertexs without index.
+ * \param m origin mesh
+ * \param idx index array
+ */
+void Fuck_ids(Ink::Mesh *m, std::vector<int> &idx);
+

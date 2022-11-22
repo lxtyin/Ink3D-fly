@@ -13,6 +13,15 @@ using std::vector;
 using std::string;
 
 namespace Ink{
+    /**
+     * load local image or embedded texture.
+     * \param name path under model diectory, or "*{id}" when getting embedded texture.
+     * \param scene embedded texture source.
+     */
+    Image*    processImage(const string &name, const aiScene *scene);
+
+
+    Material* processMaterial(aiMaterial *mat, const aiScene *scene);
     Instance* processNode(aiNode *node, const aiScene *scene, Instance *t_node, Scene &target);
     Instance* processMesh(aiMesh *mesh, const aiScene *scene, Instance *t_node, Scene &target);
     Instance* load_model(const string &path, Scene &target);
