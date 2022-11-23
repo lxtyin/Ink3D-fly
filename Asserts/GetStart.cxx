@@ -17,6 +17,8 @@ Ink::Instance *horizontal_box, *vertical_box, *scene_obj;
 Ink::Instance *plane; //use 3 layer box to rotate around self-space.
 float speed = 0;
 
+Ink::DirectionalLight* light;
+
 std::unordered_map<std::string, Ink::Image> images;
 std::unordered_map<std::string, Ink::Material> materials;
 
@@ -27,10 +29,14 @@ void conf(Settings& t) {
     t.show_cursor = false;
     t.lock_cursor = true;
     t.msaa = 4;
+    t.fps = 60;
     t.background_color = Ink::Vec3(1, 0.93, 0.8);
 }
 
 void load() {
+
+    Ink::Shadow::init(4096, 4096, 4);
+
     // load parper plane, forward: z
     horizontal_box = Ink::Instance::create();
     vertical_box   = Ink::Instance::create();
@@ -53,10 +59,16 @@ void load() {
     scene_obj->scale = Vec3(5, 5, 5);
 
     // light
-    Ink::HemisphereLight* light = new Ink::HemisphereLight();
-	light->ground_color = Ink::Vec3(0.6, 0.6, 0.6);
-    light->intensity = 0.4;
-	light->direction = Ink::Vec3(0, -1, 0);
+    light = new Ink::DirectionalLight();
+	light->color = Ink::Vec3(0.6, 0.6, 0.6);
+//    light->intensity = 0.4;
+	light->direction = Ink::Vec3(0, -1, -1);
+    light->cast_shadow = true;
+    light->shadow.activate();
+    light->shadow.camera = Ink::OrthoCamera(-100, 100, -100, 100, 0.1, 1000);
+    light->shadow.normal_bias = 0.01;
+
+
 	scene.add_light(light);
     Ink::PointLight *plight = new Ink::PointLight();
     plight->color = Ink::Vec3(1, 1, 0);
@@ -70,9 +82,9 @@ void load() {
     viewer.set_position(Ink::Vec3(0, 0, -2));
     
 	renderer.set_rendering_mode(Ink::FORWARD_RENDERING);
-    renderer.set_texture_callback([](Ink::Gpu::Texture& t) -> void {
-        t.set_filters(Ink::TEXTURE_NEAREST, Ink::TEXTURE_NEAREST);
-    });
+//    renderer.set_texture_callback([](Ink::Gpu::Texture& t) -> void {
+//        t.set_filters(Ink::TEXTURE_NEAREST, Ink::TEXTURE_NEAREST);
+//    });
 	
     renderer.load_scene(scene);
     renderer.set_viewport(Ink::Gpu::Rect(SCREEN_W, SCREEN_H));
@@ -127,6 +139,8 @@ void kinetic_update(float dt){
     horizontal_box->position += get_cur_direction() * speed * dt;
     viewer.set_position(horizontal_box->position + viewer.get_camera().direction * 5);
 
+    light->position = viewer.get_camera().position;
+
     if(speed > 20) speed *= 0.97;
 #ifndef FREE_FLY
     plane->rotation.z *= 0.95;
@@ -139,6 +153,7 @@ void update(float dt) {
     kinetic_update(dt);
     viewer.update(dt);
 //    renderer.render_skybox(viewer.get_camera());
+    renderer.update_shadow(scene, *light);
     renderer.update_scene(scene);
     renderer.render(scene, viewer.get_camera());
 }
