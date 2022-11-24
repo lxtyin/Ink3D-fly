@@ -47,6 +47,9 @@ namespace Ink{
         if(AI_SUCCESS == mat->Get(AI_MATKEY_COLOR_DIFFUSE, color)){
             result->color = Vec3(color.r, color.g, color.b);
         }
+        if(AI_SUCCESS == mat->Get(AI_MATKEY_COLOR_EMISSIVE, color)){
+            result->emissive = Vec3(color.r, color.g, color.b);
+        }
 
         // 获取纹理
         for(int i = 0;i < mat->GetTextureCount(aiTextureType_DIFFUSE);i++){
@@ -91,12 +94,6 @@ namespace Ink{
             cur->groups.push_back({name, 0, (int)cur->vertex.size()});
 
             Material *my_mat = processMaterial(mat, scene);
-
-//            // 如果存在顶点颜色，生成一张漫反射贴图
-//            if(mesh->mColors[0]){
-////                processVertexColorMap(mesh);
-//                my_mat->color_map = processVertexColorMap(mesh);
-//            }
             target.set_material(cur, name, my_mat);
         } else {
             cur->groups.push_back({"defalut", 0, (int)cur->vertex.size()});

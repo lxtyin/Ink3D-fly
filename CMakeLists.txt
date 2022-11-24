@@ -65,32 +65,19 @@ set(
         Asserts/GetStart.cxx
         Asserts/MyCamera.cpp Asserts/MyCamera.h Asserts/expend.cpp Asserts/expend.h Asserts/ModelLoader.cpp Asserts/ModelLoader.h)
 
-if(NOT SKIP_FIND_SDL2_LIBRARY)
-    if(APPLE)
-        find_library(SDL2_LIBRARY SDL2)
-        message(STATUS "SDL2_LIBRARY is ${SDL2_LIBRARY}")
-        set(
-                DEPENDENCIES
-                ${SDL2_LIBRARY}
-        )
-    elseif(WIN32)
-        find_package(SDL2 REQUIRED)
-        include_directories(${SDL2_INCLUDE_DIRS} assimp)
-        link_directories(${SDL2_LIBDIR} assimp)
 
-        # copy SDL2.dll to the directory of .exe file.
-        # clion build path.
-        set(BUILD_DIR ${CMAKE_CURRENT_SOURCE_DIR}/cmake-build-debug)
-        file(COPY ${SDL2_BINDIR}/SDL2.dll DESTINATION ${BUILD_DIR})
-        set(
-                DEPENDENCIES
-                mingw32
-                SDL2main
-                SDL2
-        )
-    endif()
-endif()
+find_package(SDL2 REQUIRED)
+include_directories(${SDL2_INCLUDE_DIRS} assimp)
+link_directories(${SDL2_LIBDIR} assimp)
+
+set(
+        DEPENDENCIES
+        mingw32
+        SDL2main
+        SDL2
+        libassimp.dll.a
+)
 
 add_executable(Ink3D ${SOURCES})
 
-target_link_libraries(Ink3D ${DEPENDENCIES} libassimp.dll.a)
+target_link_libraries(Ink3D ${DEPENDENCIES})
