@@ -6,12 +6,11 @@
 using Ink::Vec3;
 
 #define M_PATH "Asserts/models/"
-const int SCREEN_W = 1680;
-const int SCREEN_H = 960;
-#define VP_WIDTH SCREEN_W
-#define VP_HEIGHT SCREEN_H
+#define P_PATH "Asserts/images/"
+#define VP_WIDTH 1680
+#define VP_HEIGHT 960
 
-//#define FREE_FLY //fly method.
+#define FREE_FLY //fly method.
 #define USE_FORWARD_PATH 0
 
 Ink::Scene scene;
@@ -20,9 +19,6 @@ Ink::Renderer renderer;
 Ink::Instance *horizontal_box, *vertical_box, *scene_obj;
 Ink::Instance *plane; //use 3 layer box to rotate around self-space.
 float speed = 0;
-
-//std::unordered_map<std::string, Ink::Mesh*> meshes;
-//std::unordered_map<std::string, Ink::Material*> materials;
 
 Ink::Gpu::Texture* buffers = nullptr;
 Ink::Gpu::FrameBuffer* base_target = nullptr;
@@ -40,72 +36,23 @@ Ink::FXAAPass* fxaa_pass = nullptr;
 
 Ink::DirectionalLight* light;
 
+std::unordered_map<std::string, Ink::Image> images;
+
 void conf(Settings& t) {
     t.title = "Ink3D Example";
-    t.width = SCREEN_W;
-    t.height = SCREEN_H;
+    t.width = VP_WIDTH;
+    t.height = VP_HEIGHT;
     t.show_cursor = false;
     t.lock_cursor = true;
     t.msaa = 4;
     t.fps = 120;
     t.background_color = Ink::Vec3(1, 0.93, 0.8);
 }
-
-void load() {
-    Ink::Shadow::init(4096, 4096, 4);
-    Ink::Shadow::set_samples(16);
-
-    // load parper plane, forward: z
-    horizontal_box = Ink::Instance::create();
-    vertical_box   = Ink::Instance::create();
-    plane          = Ink::Instance::create();
-    Ink::Mesh *plane_mesh = new Ink::Mesh(Ink::Loader::load_obj(M_PATH "Plane/plane.obj")[0]);
-    Ink::Material *plane_mat = new Ink::Material(Ink::Loader::load_mtl(M_PATH "Plane/plane.mtl")[0]);
-    plane->mesh = plane_mesh;
-    scene.add(horizontal_box);
-    horizontal_box->add(vertical_box);
-    vertical_box->add(plane);
-    scene.set_material(plane_mesh, plane_mat->name, plane_mat);
-
-//    scene_obj = Ink::load_model(M_PATH "lakeside/lakeside_-_exterior_scene.glb", scene);
-    scene_obj = Ink::load_model(M_PATH "house/low_poly_winter_scene.glb", scene);
-    scene_obj->scale = Vec3(15, 15, 15);
-    scene_obj->cast_shadow = false;
-
-    // 环境光
-    Ink::HemisphereLight *hemlight = new Ink::HemisphereLight();
-    hemlight->ground_color = Ink::Vec3(1, 1, 1);
-    hemlight->intensity = 0.2;
-    scene.add_light(hemlight);
-
-    // 平行光（阴影）
-    light = new Ink::DirectionalLight();
-	light->color = Ink::Vec3(0.3, 0.3, 0.3);
-	light->direction = Ink::Vec3(0, -1, -0.5f);
-    light->cast_shadow = true;
-    light->shadow.activate();
-    light->shadow.camera = Ink::OrthoCamera(-300, 300, -300, 300, 0.1, 2000);
-    light->shadow.bias = 0.00005;
-	scene.add_light(light);
-
-    // 点光源
-    Ink::PointLight *plight = new Ink::PointLight();
-    plight->color = Ink::Vec3(1, 1, 0);
-    plight->intensity = 1.5;
-    plight->distance = 60;
-    plight->position = Vec3(60, 40, -50);
-    scene.add_light(plight);
-
-    viewer = Ink::MyViewer(Ink::PerspCamera(75 * Ink::DEG_TO_RAD, 1.77, 0.5, 2000), 30);
-    viewer.set_position(Ink::Vec3(0, 0, -2));
-
+void renderer_load() {
 #if USE_FORWARD_PATH
     renderer.set_rendering_mode(Ink::FORWARD_RENDERING);
 	renderer.set_tone_mapping(Ink::ACES_FILMIC_TONE_MAP, 1);
-#endif
-    renderer.load_scene(scene);
-    renderer.set_viewport(Ink::Gpu::Rect(VP_WIDTH, VP_HEIGHT));
-#if !USE_FORWARD_PATH
+#else
     buffers = new Ink::Gpu::Texture[5];
 
     buffers[0].init_2d(VP_WIDTH, VP_HEIGHT, Ink::TEXTURE_R8G8B8A8_UNORM);
@@ -176,14 +123,69 @@ void load() {
     fxaa_pass->init();
     fxaa_pass->set_texture(post_map_0);
 #endif
+    images["Skybox_PX"] = Ink::Loader::load_image(P_PATH "sky_px.png");
+    images["Skybox_PY"] = Ink::Loader::load_image(P_PATH "sky_py.png");
+    images["Skybox_PZ"] = Ink::Loader::load_image(P_PATH "sky_pz.png");
+    images["Skybox_NX"] = Ink::Loader::load_image(P_PATH "sky_nx.png");
+    images["Skybox_NY"] = Ink::Loader::load_image(P_PATH "sky_ny.png");
+    images["Skybox_NZ"] = Ink::Loader::load_image(P_PATH "sky_nz.png");
+
+    renderer.load_skybox_cubemap(images["Skybox_PX"], images["Skybox_NX"],
+                                 images["Skybox_PY"], images["Skybox_NY"],
+                                 images["Skybox_PZ"], images["Skybox_NZ"]);
     renderer.load_scene(scene);
-    renderer.set_viewport(Ink::Gpu::Rect(SCREEN_W, SCREEN_H));
+    renderer.set_viewport(Ink::Gpu::Rect(VP_WIDTH, VP_HEIGHT));
 }
 
-Vec3 get_cur_direction(){
-    float hr = horizontal_box->rotation.y;
-    float vr = vertical_box->rotation.x;
-    return Vec3(sin(hr) * cos(vr), sin(-vr), cos(hr) * cos(vr)); //?
+void load() {
+    Ink::Shadow::init(4096, 4096, 4);
+    Ink::Shadow::set_samples(16);
+
+    // load parper plane, forward: z
+    horizontal_box = Ink::Instance::create();
+    vertical_box   = Ink::Instance::create();
+    plane          = Ink::Instance::create();
+    Ink::Mesh *plane_mesh = new Ink::Mesh(Ink::Loader::load_obj(M_PATH "Plane/plane.obj")[0]);
+    Ink::Material *plane_mat = new Ink::Material(Ink::Loader::load_mtl(M_PATH "Plane/plane.mtl")[0]);
+    plane->mesh = plane_mesh;
+    scene.add(horizontal_box);
+    horizontal_box->add(vertical_box);
+    vertical_box->add(plane);
+    scene.set_material(plane_mesh, plane_mat->name, plane_mat);
+
+//    scene_obj = Ink::load_model(M_PATH "lakeside/lakeside_-_exterior_scene.glb", scene);
+    scene_obj = Ink::load_model(M_PATH "house/low_poly_winter_scene.glb", scene);
+    scene_obj->scale = Vec3(15, 15, 15);
+    scene_obj->cast_shadow = false;
+
+    // 环境光
+    Ink::HemisphereLight *hemlight = new Ink::HemisphereLight();
+    hemlight->ground_color = Ink::Vec3(1, 1, 1);
+    hemlight->intensity = 0.2;
+    scene.add_light(hemlight);
+
+    // 平行光（阴影）
+    light = new Ink::DirectionalLight();
+	light->color = Ink::Vec3(0.3, 0.3, 0.3);
+	light->direction = Ink::Vec3(0, -1, -0.5f);
+    light->cast_shadow = true;
+    light->shadow.activate();
+    light->shadow.camera = Ink::OrthoCamera(-300, 300, -300, 300, 0.1, 2000);
+    light->shadow.bias = 0.00005;
+	scene.add_light(light);
+
+    // 点光源
+    Ink::PointLight *plight = new Ink::PointLight();
+    plight->color = Ink::Vec3(1, 1, 0);
+    plight->intensity = 1.5;
+    plight->distance = 60;
+    plight->position = Vec3(60, 40, -50);
+    scene.add_light(plight);
+
+    viewer = Ink::MyViewer(Ink::PerspCamera(75 * Ink::DEG_TO_RAD, 1.77, 0.5, 2000), 30);
+    viewer.set_position(Ink::Vec3(0, 0, -2));
+
+    renderer_load();
 }
 
 void input_update(float dt){
@@ -198,7 +200,13 @@ void input_update(float dt){
     if(Ink::Window::is_down(SDLK_s)) vertical_box->rotation.x += dt;
     if(Ink::Window::is_down(SDLK_e)) plane->rotation.z += dt;
     if(Ink::Window::is_down(SDLK_q)) plane->rotation.z -= dt;
-    if(Ink::Window::is_down(SDLK_SPACE)) speed = 100;
+    if(Ink::Window::is_down(SDLK_SPACE)) {
+        float hr = horizontal_box->rotation.y;
+        float vr = vertical_box->rotation.x;
+        Vec3 cur_direction = Vec3(sin(hr) * cos(vr), sin(-vr), cos(hr) * cos(vr)); //?
+
+        horizontal_box->position += cur_direction * 5 * dt;
+    }
 #else
 //    Vec3 cdir = -viewer.get_camera().direction;
 //    Vec3 pdir = get_cur_direction();
@@ -206,11 +214,11 @@ void input_update(float dt){
     int flip = 1;
 
     if(Ink::Window::is_down(SDLK_a)){
-        horizontal_box->rotation.y += 0.5 * dt * flip;
+        horizontal_box->rotation.y += dt * flip;
         plane->rotation.z -= dt;
     }
     if(Ink::Window::is_down(SDLK_d)){
-        horizontal_box->rotation.y -= 0.5 * dt * flip;
+        horizontal_box->rotation.y -= dt * flip;
         plane->rotation.z += dt;
     }
     if(Ink::Window::is_down(SDLK_w)){
@@ -226,7 +234,12 @@ void input_update(float dt){
 }
 
 void kinetic_update(float dt){
-    horizontal_box->position += get_cur_direction() * speed * dt;
+
+    float hr = horizontal_box->rotation.y;
+    float vr = vertical_box->rotation.x;
+    Vec3 cur_direction = Vec3(sin(hr) * cos(vr), sin(-vr), cos(hr) * cos(vr)); //?
+
+    horizontal_box->position += cur_direction * speed * dt;
     viewer.set_position(horizontal_box->position + viewer.get_camera().direction * 5);
     light->position = viewer.get_camera().position - Vec3(0, -1, -0.5f) * 100;
 
@@ -237,13 +250,9 @@ void kinetic_update(float dt){
 #endif
 }
 
-void update(float dt) {
-    input_update(dt);
-    kinetic_update(dt);
-    viewer.update(dt);
-//    renderer.render_skybox(viewer.get_camera());
-
+void renderer_update(float dt){
     renderer.clear();
+    renderer.render_skybox(viewer.get_camera());
     renderer.update_shadow(scene, *light);
     renderer.update_scene(scene);
     renderer.render(scene, viewer.get_camera());
@@ -254,6 +263,14 @@ void update(float dt) {
     tone_map_pass->process();
     fxaa_pass->process();
 #endif
+}
+
+void update(float dt) {
+    input_update(dt);
+    kinetic_update(dt);
+    viewer.update(dt);
+
+    renderer_update(dt);
 }
 
 void quit() {}
