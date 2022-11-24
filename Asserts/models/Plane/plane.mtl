@@ -7,6 +7,7 @@ newmtl Scene_-_Root
 	Kd 1 1 1
 	d 1
 	Tr 0
+	Ke 0.7 0.7 0.7
 	illum 2
 	Ks 0.2 0.2 0.2
 	Ns 20

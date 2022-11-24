@@ -20,7 +20,6 @@ namespace Ink{
      */
     Image*    processImage(const string &name, const aiScene *scene);
 
-
     Material* processMaterial(aiMaterial *mat, const aiScene *scene);
     Instance* processNode(aiNode *node, const aiScene *scene, Instance *t_node, Scene &target);
     Instance* processMesh(aiMesh *mesh, const aiScene *scene, Instance *t_node, Scene &target);
