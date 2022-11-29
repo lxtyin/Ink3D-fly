@@ -10,7 +10,7 @@ using Ink::Vec3;
 #define VP_WIDTH 1680
 #define VP_HEIGHT 960
 
-#define FREE_FLY //fly method.
+//#define FREE_FLY //fly method.
 #define USE_FORWARD_PATH 0
 
 Ink::Scene scene;
