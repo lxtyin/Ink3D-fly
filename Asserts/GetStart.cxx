@@ -3,6 +3,7 @@
 #include "MyCamera.h"
 #include "expend.h"
 #include "ModelLoader.h"
+#include "ParticleInstance.h"
 using Ink::Vec3;
 
 #define M_PATH "Asserts/models/"
@@ -10,24 +11,18 @@ using Ink::Vec3;
 #define VP_WIDTH 1680
 #define VP_HEIGHT 960
 
-#define FREE_FLY //fly method.
+//#define FREE_FLY //fly method.
 #define USE_FORWARD_PATH 0
 
 Ink::Scene scene;
 Ink::MyViewer viewer;
 Ink::Renderer renderer;
-Ink::Instance *horizontal_box, *vertical_box, *scene_obj;
+Ink::Instance *scene_obj;
 Ink::Instance *plane; //use 3 layer box to rotate around self-space.
+Ink::ParticleInstance *particle_instance;
 float speed = 0;
 
-Ink::Gpu::Texture* buffers = nullptr;
-Ink::Gpu::FrameBuffer* base_target = nullptr;
-
-Ink::Gpu::Texture* post_map_0 = nullptr;
-Ink::Gpu::FrameBuffer* post_target_0 = nullptr;
-
-Ink::Gpu::Texture* post_map_1 = nullptr;
-Ink::Gpu::FrameBuffer* post_target_1 = nullptr;
+Ink::Mesh *plane_mesh;
 
 Ink::LightPass* light_pass = nullptr;
 Ink::BloomPass* bloom_pass = nullptr;
@@ -53,6 +48,16 @@ void renderer_load() {
     renderer.set_rendering_mode(Ink::FORWARD_RENDERING);
 	renderer.set_tone_mapping(Ink::ACES_FILMIC_TONE_MAP, 1);
 #else
+
+    Ink::Gpu::Texture* buffers = nullptr;
+    Ink::Gpu::FrameBuffer* base_target = nullptr;
+
+    Ink::Gpu::Texture* post_map_0 = nullptr;
+    Ink::Gpu::FrameBuffer* post_target_0 = nullptr;
+
+    Ink::Gpu::Texture* post_map_1 = nullptr;
+    Ink::Gpu::FrameBuffer* post_target_1 = nullptr;
+
     buffers = new Ink::Gpu::Texture[5];
 
     buffers[0].init_2d(VP_WIDTH, VP_HEIGHT, Ink::TEXTURE_R8G8B8A8_UNORM);
@@ -94,8 +99,6 @@ void renderer_load() {
 
     renderer.set_target(base_target);
 
-    Ink::RenderPass::set_viewport({VP_WIDTH, VP_HEIGHT});
-
     light_pass = new Ink::LightPass();
     light_pass->init();
     light_pass->set_buffer_c(buffers + 0);
@@ -107,7 +110,7 @@ void renderer_load() {
 
     bloom_pass = new Ink::BloomPass(VP_WIDTH, VP_HEIGHT);
     bloom_pass->init();
-    bloom_pass->threshold = 0.5;
+    bloom_pass->threshold = 0.2;
     bloom_pass->radius = 0.5;
     bloom_pass->intensity = 1;
     bloom_pass->set_texture(post_map_0);
@@ -130,9 +133,9 @@ void renderer_load() {
     images["Skybox_NY"] = Ink::Loader::load_image(P_PATH "sky_ny.png");
     images["Skybox_NZ"] = Ink::Loader::load_image(P_PATH "sky_nz.png");
 
-    renderer.load_skybox_cubemap(images["Skybox_PX"], images["Skybox_NX"],
-                                 images["Skybox_PY"], images["Skybox_NY"],
-                                 images["Skybox_PZ"], images["Skybox_NZ"]);
+    renderer.load_skybox(images["Skybox_PX"], images["Skybox_NX"],
+                         images["Skybox_PY"], images["Skybox_NY"],
+                         images["Skybox_PZ"], images["Skybox_NZ"]);
     renderer.load_scene(scene);
     renderer.set_viewport(Ink::Gpu::Rect(VP_WIDTH, VP_HEIGHT));
 }
@@ -142,16 +145,15 @@ void load() {
     Ink::Shadow::set_samples(16);
 
     // load parper plane, forward: z
-    horizontal_box = Ink::Instance::create();
-    vertical_box   = Ink::Instance::create();
     plane          = Ink::Instance::create();
-    Ink::Mesh *plane_mesh = new Ink::Mesh(Ink::Loader::load_obj(M_PATH "Plane/plane.obj")[0]);
+    plane_mesh = new Ink::Mesh(Ink::Loader::load_obj(M_PATH "Plane/plane.obj")[0]);
     Ink::Material *plane_mat = new Ink::Material(Ink::Loader::load_mtl(M_PATH "Plane/plane.mtl")[0]);
+    plane_mesh->create_normals();
+    plane->rotation.order = Ink::EULER_YXZ;
+
     plane->mesh = plane_mesh;
-    scene.add(horizontal_box);
-    horizontal_box->add(vertical_box);
-    vertical_box->add(plane);
-    scene.set_material(plane_mesh, plane_mat->name, plane_mat);
+    scene.add(plane);
+    scene.set_material(plane_mat->name, plane_mesh, plane_mat);
 
 //    scene_obj = Ink::load_model(M_PATH "lakeside/lakeside_-_exterior_scene.glb", scene);
     scene_obj = Ink::load_model(M_PATH "house/low_poly_winter_scene.glb", scene);
@@ -176,11 +178,31 @@ void load() {
 
     // 点光源
     Ink::PointLight *plight = new Ink::PointLight();
-    plight->color = Ink::Vec3(1, 1, 0);
+    plight->color = Ink::Vec3(0.5, 0.5, 1);
     plight->intensity = 1.5;
     plight->distance = 60;
     plight->position = Vec3(60, 40, -50);
     scene.add_light(plight);
+
+    // 粒子
+    Ink::Material *particle_mat = new Ink::Material("particle_material");
+    particle_mat->emissive = Vec3(2, 2, 2);
+    particle_instance = new Ink::ParticleInstance(
+            0.01,
+            [&](Ink::Particle &p){
+                p.lifetime = 30;
+                p.vers.push_back(Vec3(0, 0, 0));
+                p.vers.push_back(Vec3(rand() % 10, rand() % 10, rand() % 10) / 5);
+                p.vers.push_back(Vec3(rand() % 10, rand() % 10, rand() % 10) / 5);
+                p.position = Vec3(rand() % 400 - 200, rand() % 20 + 100, rand() % 400 - 200);
+            },
+            [&](Ink::Particle &p, float dt){
+                p.position -= Vec3(0, 8, 0) * dt;
+            },
+            *particle_mat,
+            &renderer);
+    scene.set_material(particle_mat->name, particle_instance->mesh, particle_mat);
+    scene.add(particle_instance);
 
     viewer = Ink::MyViewer(Ink::PerspCamera(75 * Ink::DEG_TO_RAD, 1.77, 0.5, 2000), 30);
     viewer.set_position(Ink::Vec3(0, 0, -2));
@@ -214,39 +236,43 @@ void input_update(float dt){
     int flip = 1;
 
     if(Ink::Window::is_down(SDLK_a)){
-        horizontal_box->rotation.y += dt * flip;
+        plane->rotation.y += dt * flip;
         plane->rotation.z -= dt;
     }
     if(Ink::Window::is_down(SDLK_d)){
-        horizontal_box->rotation.y -= dt * flip;
+        plane->rotation.y -= dt * flip;
         plane->rotation.z += dt;
     }
     if(Ink::Window::is_down(SDLK_w)){
-        vertical_box->rotation.x -= dt;
+        plane->rotation.x -= dt;
     }
     if(Ink::Window::is_down(SDLK_s)){
-        vertical_box->rotation.x += dt;
+        plane->rotation.x += dt;
     }
     if(Ink::Window::is_down(SDLK_SPACE)){
         speed = 100;
+        std::cout << plane->position.x << ' '
+                  << plane->position.y << ' '
+                  << plane->position.z << '\n';
     }
 #endif
 }
 
 void kinetic_update(float dt){
 
-    float hr = horizontal_box->rotation.y;
-    float vr = vertical_box->rotation.x;
+    float hr = plane->rotation.y;
+    float vr = plane->rotation.x;
     Vec3 cur_direction = Vec3(sin(hr) * cos(vr), sin(-vr), cos(hr) * cos(vr)); //?
 
-    horizontal_box->position += cur_direction * speed * dt;
-    viewer.set_position(horizontal_box->position + viewer.get_camera().direction * 5);
-    light->position = viewer.get_camera().position - Vec3(0, -1, -0.5f) * 100;
+    plane->position += cur_direction * speed * dt;
+    viewer.set_position(plane->position + viewer.get_camera().direction * 5);
+    light->position = viewer.get_camera().position - light->direction * 200;
+    particle_instance->update(dt);
 
-    if(speed > 40) speed *= 0.97;
+    if(speed > 40) speed -= dt * 5;
 #ifndef FREE_FLY
     plane->rotation.z *= 0.95;
-    vertical_box->rotation.x *= 0.95;
+    plane->rotation.x *= 0.95;
 #endif
 }
 
@@ -258,10 +284,11 @@ void renderer_update(float dt){
     renderer.render(scene, viewer.get_camera());
 
 #if !USE_FORWARD_PATH
-    light_pass->process(scene, viewer.get_camera());
-    bloom_pass->process();
-    tone_map_pass->process();
-    fxaa_pass->process();
+    light_pass->set(&scene, &viewer.get_camera());
+    light_pass->render();
+    bloom_pass->render();
+    tone_map_pass->render();
+    fxaa_pass->render();
 #endif
 }
 

@@ -23,8 +23,8 @@
 #pragma once
 
 #include "../scene/Scene.h"
+#include "../renderer/Renderer.h"
 
-#include "Renderer.h"
 #include "RenderPass.h"
 
 namespace Ink {
@@ -32,7 +32,7 @@ namespace Ink {
 class LightPass : public RenderPass {
 public:
 	/**
-	 * Creates a new LightPass.
+	 * Creates a new LightPass object.
 	 */
 	explicit LightPass() = default;
 	
@@ -42,24 +42,17 @@ public:
 	void init() override;
 	
 	/**
-	 * Compiles if the shaders are not compiled yet. It will be automatically
-	 * invoked by the process method.
-	 */
-	void compile() override;
-	
-	/**
-	 * Renders to the render target after the shaders are compiled. It will be
-	 * automatically invoked by the process method.
+	 * Compiles the required shaders and renders to the render target.
 	 */
 	void render() const override;
 	
 	/**
-	 * Compiles the shaders and render to the render target.
+	 * Sets the specified parameters to render pass before the rendering starts.
 	 *
 	 * \param s scene
 	 * \param c camera
 	 */
-	void process(const Scene& s, const Camera& c);
+	void set(const Scene* s, const Camera* c);
 	
 	/**
 	 * Returns the mode in tone mapping.
@@ -141,9 +134,9 @@ public:
 	void set_buffer_d(const Gpu::Texture* d);
 	
 private:
-	int tone_mapping_mode = LINEAR_TONE_MAP;
+	int tone_map_mode = LINEAR_TONE_MAP;
 	
-	float tone_mapping_exposure = 1;
+	float tone_map_exposure = 1;
 	
 	const Scene* scene = nullptr;
 	
@@ -158,10 +151,6 @@ private:
 	const Gpu::Texture* buffer_a = nullptr;
 	
 	const Gpu::Texture* buffer_d = nullptr;
-	
-	std::unique_ptr<Gpu::Shader> light_shader;
-	
-	using RenderPass::process;
 };
 
 }

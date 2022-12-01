@@ -151,10 +151,10 @@ void main() {
 		t_emissive *= texture(emissive_map, v_uv).xyz;
 	#endif
 	
-	/* calculate ambient occulsion */
-	float t_occulsion = 1.;
+	/* calculate ambient occlusion */
+	float t_occlusion = 1.;
 	#ifdef USE_AO_MAP
-		t_occulsion *= (texture(ao_map, v_uv).x - 1.) * ao_intensity + 1.;
+		t_occlusion *= (texture(ao_map, v_uv).x - 1.) * ao_intensity + 1.;
 	#endif
 	
 	/* calculate diffuse color */
@@ -184,12 +184,12 @@ void main() {
 		indirect_light += multi_scatter * irradiance;
 		
 		/* calculate indirect diffuse light */
-		indirect_light += diffuse * (1 - single_scatter - multi_scatter) * irradiance * t_occulsion;
+		indirect_light += diffuse * (1 - single_scatter - multi_scatter) * irradiance * t_occlusion;
 	#endif
 	
 	#ifdef DEFERRED_RENDERING
 		/* output G-Buffers in deferred rendering */
-		out_buffer_c = vec4(diffuse, t_occulsion);
+		out_buffer_c = vec4(diffuse, t_occlusion);
 		out_buffer_n = vec4(pack_normal(t_normal), 0.);
 		out_buffer_m = vec4(specular_f0, t_roughness);
 		out_buffer_a = vec4(indirect_light + t_emissive, 0.);
@@ -209,8 +209,8 @@ void main() {
 		geometry.normal = t_normal;
 		
 		/* calculate color with light pipeline */
-		vec4 light_occulsion = vec4(indirect_light + t_emissive, t_occulsion);
-		vec3 final_color = light_process(material, geometry, light_occulsion);
+		vec4 light_occlusion = vec4(indirect_light + t_emissive, t_occlusion);
+		vec3 final_color = light_process(material, geometry, light_occlusion);
 		out_color = vec4(final_color, t_color.w);
 	#endif
 }

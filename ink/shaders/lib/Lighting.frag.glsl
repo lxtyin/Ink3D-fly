@@ -16,16 +16,17 @@ layout(location = 0) out vec4 out_color;
 
 void main() {
 	/* sample diffuse color and ambient from buffer C */
-	vec4 diffuse_occulsion = textureLod(buffer_c, v_uv, 0);
-	vec3 diffuse = diffuse_occulsion.xyz;
-	float occulsion = diffuse_occulsion.w;
+	vec4 diffuse_occlusion = textureLod(buffer_c, v_uv, 0);
+	vec3 diffuse = diffuse_occlusion.xyz;
+	float occlusion = diffuse_occlusion.w;
 	
 	/* sample depth from buffer D */
 	float depth = textureLod(buffer_d, v_uv, 0).x;
 	
-	/* ignore pixels on skybox */
-	out_color = vec4(diffuse, 0.);
-	if (depth == 1.) return;
+	if (depth == 1.) {
+		out_color = vec4(TONE_MAP(diffuse, exposure), 0);
+		return; /* ignore the pixels on skybox */
+	}
 	
 	/* sample world normal from buffer N */
 	vec3 normal = textureLod(buffer_n, v_uv, 0).xyz;
@@ -62,6 +63,6 @@ void main() {
 	geometry.normal = normal;
 	
 	/* calculate color with light pipeline */
-	vec4 light_occulsion = vec4(additional, occulsion);
-	out_color = vec4(light_process(material, geometry, light_occulsion), 0);
+	vec4 light_occlusion = vec4(additional, occlusion);
+	out_color = vec4(light_process(material, geometry, light_occlusion), 0);
 }

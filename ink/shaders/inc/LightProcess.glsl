@@ -32,9 +32,9 @@ uniform LinearFog linear_fog;
 uniform Exp2Fog exp2_fog;
 #endif
 
-vec3 light_process(Material mat, Geometry geom, vec4 light_occulsion) {
+vec3 light_process(Material mat, Geometry geom, vec4 light_occlusion) {
 	/* initialize light with additional light */
-	vec3 direct = light_occulsion.xyz;
+	vec3 direct = light_occlusion.xyz;
 	vec3 indirect = vec3(0.);
 	
 	#if NUM_POINT_LIGHT > 0
@@ -66,7 +66,7 @@ vec3 light_process(Material mat, Geometry geom, vec4 light_occulsion) {
 	#endif
 	
 	/* calculate direct and indirect light */
-	vec3 light = direct + indirect * light_occulsion.w;
+	vec3 light = direct + indirect * light_occlusion.w;
 	
 	#ifdef USE_LINEAR_FOG
 		/* apply linear fog on the light */

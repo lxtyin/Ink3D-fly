@@ -20,32 +20,50 @@
  * SOFTWARE.
  */
 
-#include "CopyPass.h"
+#include "Euler.h"
 
 namespace Ink {
 
-void CopyPass::init() {
-	copy_shader = std::make_unique<Gpu::Shader>();
-	copy_shader->load_vert_file("ink/shaders/lib/Copy.vert.glsl");
-	copy_shader->load_frag_file("ink/shaders/lib/Copy.frag.glsl");
-}
+Euler::Euler(float x, float y, float z, int o) :
+x(x), y(y), z(z), order(o) {}
 
-void CopyPass::compile() {
-	copy_shader->compile();
-}
+Euler::Euler(Vec3 r, int o) :
+x(r.x), y(r.y), z(r.z), order(o) {}
 
-void CopyPass::render() const {
-	copy_shader->use_program();
-	copy_shader->set_uniform_i("map", map->activate(0));
-	RenderPass::render_to(copy_shader.get(), target);
-}
-
-const Gpu::Texture* CopyPass::get_texture() const {
-	return map;
-}
-
-void CopyPass::set_texture(const Gpu::Texture* t) {
-	map = t;
+Mat3 Euler::to_rotation_matrix() const {
+	Mat3 rotation_x = {
+		1       , 0       , 0       ,
+		0       , cosf(x) , -sinf(x),
+		0       , sinf(x) , cosf(x) ,
+	};
+	Mat3 rotation_y = {
+		cosf(y) , 0       , sinf(y),
+		0       , 1       , 0       ,
+        -sinf(y) , 0       , cosf(y) ,
+	};
+	Mat3 rotation_z = {
+		cosf(z) , -sinf(z), 0       ,
+		sinf(z) , cosf(z) , 0       ,
+		0       , 0       , 1       ,
+	};
+	if (order == EULER_XYZ) {
+		return rotation_x * rotation_y * rotation_z;
+	}
+	if (order == EULER_XZY) {
+		return rotation_x * rotation_z * rotation_y;
+	}
+	if (order == EULER_YXZ) {
+		return rotation_y * rotation_x * rotation_z;
+	}
+	if (order == EULER_YZX) {
+		return rotation_y * rotation_z * rotation_x;
+	}
+	if (order == EULER_ZXY) {
+		return rotation_z * rotation_x * rotation_y;
+	}
+	/*       ... EULER_ZYX */ {
+		return rotation_z * rotation_y * rotation_x;
+	}
 }
 
 }

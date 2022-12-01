@@ -22,25 +22,41 @@
 
 #pragma once
 
-#include "../math/Maths.h"
+#include "RenderPass.h"
 
 namespace Ink {
 
-class LinearFog {
+class CopyPass : public RenderPass {
 public:
-	bool visible = true;       /**< whether the fog is visible */
-	Vec3 color = {1, 1, 1};    /**< the color of fog */
-	float near = 1;            /**< the nearest distance of fog */
-	float far = 1000;          /**< the farthest distance of fog */
+	/**
+	 * Creates a new CopyPass object.
+	 */
+	explicit CopyPass() = default;
 	
 	/**
-	 * Creates a new Fog object and initializes it with color and distances.
-	 *
-	 * \param c the color of fog
-	 * \param n the nearest distance of fog
-	 * \param f the farthest distance of fog
+	 * Initializes the render pass and prepare the resources for rendering.
 	 */
-	explicit LinearFog(const Vec3& c = {1, 1, 1}, float n = 1, float f = 1000);
+	void init() override;
+	
+	/**
+	 * Compiles the required shaders and renders to the render target.
+	 */
+	void render() const override;
+	
+	/**
+	 * Returns the 2D texture represents the input of rendering pass.
+	 */
+	const Gpu::Texture* get_texture() const;
+	
+	/**
+	 * Sets the specified 2D texture as the input of rendering pass.
+	 *
+	 * \param t source texture
+	 */
+	void set_texture(const Gpu::Texture* t);
+	
+private:
+	const Gpu::Texture* map = nullptr;
 };
 
 }
