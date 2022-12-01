@@ -22,25 +22,45 @@
 
 #pragma once
 
-#include "../math/Maths.h"
+#include <memory>
+
+#include "Gpu.h"
 
 namespace Ink {
 
-class LinearFog {
+class ShaderLib {
 public:
-	bool visible = true;       /**< whether the fog is visible */
-	Vec3 color = {1, 1, 1};    /**< the color of fog */
-	float near = 1;            /**< the nearest distance of fog */
-	float far = 1000;          /**< the farthest distance of fog */
+	/**
+	 * Returns the shader with the specified name from shader cache.
+	 *
+	 * \param n name
+	 */
+	static const Gpu::Shader* fetch(const std::string& n);
 	
 	/**
-	 * Creates a new Fog object and initializes it with color and distances.
+	 * Returns the shader with the specified name and defines from shader cache.
 	 *
-	 * \param c the color of fog
-	 * \param n the nearest distance of fog
-	 * \param f the farthest distance of fog
+	 * \param n name
+	 * \param d defines
 	 */
-	explicit LinearFog(const Vec3& c = {1, 1, 1}, float n = 1, float f = 1000);
+	static const Gpu::Shader* fetch(const std::string& n, const Defines& d);
+	
+	/**
+	 * Clears all values from the shader cache.
+	 */
+	static void clear_caches();
+	
+	/**
+	 * Sets the path to find shaders by names. Default is "ink/shaders/lib/".
+	 *
+	 * \param p library path
+	 */
+	static void set_library_path(const std::string& p);
+	
+private:
+	static std::string library_path;
+	
+	static std::unordered_map<std::string, std::unique_ptr<Gpu::Shader> > cache;
 };
 
 }

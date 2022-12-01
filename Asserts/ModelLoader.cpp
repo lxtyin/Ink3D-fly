@@ -94,7 +94,7 @@ namespace Ink{
             cur->groups.push_back({name, 0, (int)cur->vertex.size()});
 
             Material *my_mat = processMaterial(mat, scene);
-            target.set_material(cur, name, my_mat);
+            target.set_material(name, cur, my_mat);
         } else {
             cur->groups.push_back({"defalut", 0, (int)cur->vertex.size()});
         }
@@ -107,7 +107,7 @@ namespace Ink{
         aiVector3D position, rotation, scale;
         node->mTransformation.Decompose(scale, rotation, position);
         cur->position = Vec3(position.x, position.y, position.z);
-        cur->rotation = Vec3(rotation.x, rotation.y, rotation.z);
+        cur->rotation = Euler(rotation.x, rotation.y, rotation.z);
         cur->scale    = Vec3(scale.x,    scale.y,    scale.z    );
 
         for(int i = 0; i < node->mNumMeshes; i++) {

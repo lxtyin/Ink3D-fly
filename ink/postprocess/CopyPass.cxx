@@ -20,27 +20,25 @@
  * SOFTWARE.
  */
 
-#pragma once
-
-#include "../math/Maths.h"
+#include "CopyPass.h"
 
 namespace Ink {
 
-class LinearFog {
-public:
-	bool visible = true;       /**< whether the fog is visible */
-	Vec3 color = {1, 1, 1};    /**< the color of fog */
-	float near = 1;            /**< the nearest distance of fog */
-	float far = 1000;          /**< the farthest distance of fog */
-	
-	/**
-	 * Creates a new Fog object and initializes it with color and distances.
-	 *
-	 * \param c the color of fog
-	 * \param n the nearest distance of fog
-	 * \param f the farthest distance of fog
-	 */
-	explicit LinearFog(const Vec3& c = {1, 1, 1}, float n = 1, float f = 1000);
-};
+void CopyPass::init() {}
+
+void CopyPass::render() const {
+	auto* copy_shader = ShaderLib::fetch("Copy");
+	copy_shader->use_program();
+	copy_shader->set_uniform_i("map", map->activate(0));
+	RenderPass::render_to(copy_shader, target);
+}
+
+const Gpu::Texture* CopyPass::get_texture() const {
+	return map;
+}
+
+void CopyPass::set_texture(const Gpu::Texture* t) {
+	map = t;
+}
 
 }

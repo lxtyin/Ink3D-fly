@@ -24,11 +24,6 @@
 
 namespace Ink {
 
-void RenderPass::process() {
-	compile();
-	render();
-}
-
 const Gpu::FrameBuffer* RenderPass::get_target() const {
 	return target;
 }
@@ -85,8 +80,7 @@ bool RenderPass::init_render_to() {
 	plane = std::make_unique<Gpu::VertexObject>();
 	plane->load(plane_mesh);
 	
-	/* finish initialization */
-	return true;
+	return true; /* finish */
 }
 
 Gpu::Rect RenderPass::viewport;

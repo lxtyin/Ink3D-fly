@@ -39,6 +39,11 @@ public:
 	Vec3 camera_pos;                 /**< the position of camera */
 	
 	/**
+	 * Creates a new Shader object.
+	 */
+	explicit Shader() = default;
+	
+	/**
 	 * The function to complete the task of vertex shader.
 	 *
 	 * \param m mesh
@@ -65,42 +70,54 @@ public:
 	virtual void fragment(const Vec3& b, const Vec2& p, Vec4& c) = 0;
 };
 
-/**
- * Samples the texture with UV-coordinate by nearest texture mapping.
- *
- * \param t texture
- * \param u u-coordinate
- * \param v v-coordinate
- */
-Vec3 nearest_map(const Image& t, float u, float v);
-
-/**
- * Samples the texture with UV-coordinate by nearest texture mapping.
- *
- * \param t texture
- * \param uv uv-coordinate
- */
-Vec3 nearest_map(const Image& t, const Vec2& uv);
-
-/**
- * Samples the texture with UV-coordinate by linear texture mapping.
- *
- * \param t texture
- * \param u U-coordinate
- * \param v V-coordinate
- */
-Vec3 linear_map(const Image& t, float u, float v);
-
-/**
- * Samples the texture with UV-coordinate by linear texture mapping.
- *
- * \param t texture
- * \param uv UV-coordinate
- */
-Vec3 linear_map(const Image& t, const Vec2& uv);
+struct PointList {
+	size_t size = 0;
+	Vec4* vertices = nullptr;
+	Vec3* barycenters = nullptr;
+};
 
 static int viewport_w = 0;
 static int viewport_h = 0;
+
+static std::vector<double> z_buffer;
+
+/**
+ * Samples the texture with UV-coordinate by nearest texture mapping.
+ *
+ * \param t texture
+ * \param c channel
+ * \param u U coordinate
+ * \param v V coordinate
+ */
+float nearest_map(const Image& t, int c, float u, float v);
+
+/**
+ * Samples the texture with UV-coordinate by nearest texture mapping.
+ *
+ * \param t texture
+ * \param c channel
+ * \param uv UV coordinate
+ */
+float nearest_map(const Image& t, int c, const Vec2& uv);
+
+/**
+ * Samples the texture with UV-coordinate by linear texture mapping.
+ *
+ * \param t texture
+ * \param c channel
+ * \param u U coordinate
+ * \param v V coordinate
+ */
+float linear_map(const Image& t, int c, float u, float v);
+
+/**
+ * Samples the texture with UV-coordinate by linear texture mapping.
+ *
+ * \param t texture
+ * \param c channel
+ * \param uv UV coordinate
+ */
+float linear_map(const Image& t, int c, const Vec2& uv);
 
 /**
  * Sets the viewport region to render from (0, 0) to (width, height).
@@ -109,12 +126,6 @@ static int viewport_h = 0;
  * \param h the height of the viewport
  */
 void set_viewport(int w, int h);
-
-struct PointList {
-	size_t size = 0;
-	Vec4* vertices = nullptr;
-	Vec3* barycenters = nullptr;
-};
 
 /**
  * Adds a point into the point list.
@@ -187,7 +198,5 @@ void draw(const Camera& c, Shader& s, const Mesh& m, double* zb, Vec4* canvas = 
  * \param canvas canvas
  */
 void draw_instances(const Camera& c, Shader& s, const Instance* const* i, size_t size, Vec4* canvas);
-
-static std::vector<double> z_buffer;
 
 }

@@ -26,49 +26,38 @@
 
 namespace Ink {
 
-void LightPass::init() {
-	light_shader = std::make_unique<Gpu::Shader>();
-	light_shader->load_vert_file("ink/shaders/lib/lighting.vert.glsl");
-	light_shader->load_frag_file("ink/shaders/lib/lighting.frag.glsl");
-}
-
-void LightPass::compile() {
-	Defines light_defines = Renderer::get_scene_defines(*scene);
-	light_defines.set(Renderer::get_tone_map_defines(tone_mapping_mode));
-	light_shader->set_defines(light_defines);
-	light_shader->compile();
-}
+void LightPass::init() {}
 
 void LightPass::render() const {
-	/* use the program of light shader */
-	light_shader->use_program();
+	/* fetch light shader from shader lib */
+	Defines light_defines = Renderer::define_scene(*scene);
+	light_defines.set(Renderer::define_tone_map(tone_map_mode));
+	auto* light_shader = ShaderLib::fetch("Lighting", light_defines);
 	
-	/* pass G-Buffers to shader */
+	/* pass parameters and G-Buffers to shader */
+	light_shader->use_program();
+	light_shader->set_uniform_v3("camera_pos", camera->position);
+	light_shader->set_uniform_f("exposure", tone_map_exposure);
 	light_shader->set_uniform_i("buffer_c", buffer_c->activate(0));
 	light_shader->set_uniform_i("buffer_n", buffer_n->activate(1));
 	light_shader->set_uniform_i("buffer_m", buffer_m->activate(2));
 	light_shader->set_uniform_i("buffer_a", buffer_a->activate(3));
 	light_shader->set_uniform_i("buffer_d", buffer_d->activate(4));
 	
-	/* pass camera parameters to shader */
+	/* pass camera parameter to shader */
 	Mat4 inv_view_proj = inverse_4x4(camera->projection * camera->viewing);
-	light_shader->set_uniform_v3("camera_pos", camera->position);
 	light_shader->set_uniform_m4("inv_view_proj", inv_view_proj);
-	
-	/* pass the tone mapping parameters to shader */
-	light_shader->set_uniform_f("exposure", tone_mapping_exposure);
 	
 	/* pass the lights & fogs parameters to shader */
 	Renderer::set_light_uniforms(*scene, *light_shader);
 	
-	/* render to target */
-	RenderPass::render_to(light_shader.get(), target);
+	/* render results to render target */
+	RenderPass::render_to(light_shader, target);
 }
 
-void LightPass::process(const Scene& s, const Camera& c) {
-	scene = &s;
-	camera = &c;
-	process();
+void LightPass::set(const Scene* s, const Camera* c) {
+	scene = s;
+	camera = c;
 }
 
 const Gpu::Texture* LightPass::get_buffer_c() const {
@@ -112,16 +101,16 @@ void LightPass::set_buffer_d(const Gpu::Texture* t) {
 }
 
 int LightPass::get_tone_mapping_mode() const {
-	return tone_mapping_mode;
+	return tone_map_mode;
 }
 
 float LightPass::get_tone_mapping_exposure() const {
-	return tone_mapping_exposure;
+	return tone_map_exposure;
 }
 
 void LightPass::set_tone_mapping(int m, float e) {
-	tone_mapping_mode = m;
-	tone_mapping_exposure = e;
+	tone_map_mode = m;
+	tone_map_exposure = e;
 }
 
 }

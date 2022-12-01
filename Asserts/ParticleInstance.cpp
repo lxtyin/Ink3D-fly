@@ -52,7 +52,7 @@ namespace Ink{
         }
         for(Particle *ptr : to_del) all_particles.erase(ptr);
         update_mesh();
-        renderer->cache_mesh.erase(compose_mesh);
+        renderer->unload_mesh(compose_mesh);
         renderer->load_mesh(compose_mesh);
     }
 

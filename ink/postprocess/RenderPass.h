@@ -26,13 +26,14 @@
 #include <memory>
 
 #include "../graphics/Gpu.h"
+#include "../graphics/ShaderLib.h"
 
 namespace Ink {
 
 class RenderPass {
 public:
 	/**
-	 * Creates a new RenderPass.
+	 * Creates a new RenderPass object.
 	 */
 	explicit RenderPass() = default;
 	
@@ -42,25 +43,12 @@ public:
 	virtual void init() = 0;
 	
 	/**
-	 * Compiles if the shaders are not compiled yet. It will be automatically
-	 * invoked by the process method.
-	 */
-	virtual void compile() = 0;
-	
-	/**
-	 * Renders to the render target after the shaders are compiled. It will be
-	 * automatically invoked by the process method.
+	 * Compiles the required shaders and renders to the render target.
 	 */
 	virtual void render() const = 0;
 	
 	/**
-	 * Compiles the shaders and render to the render target.
-	 */
-	virtual void process();
-	
-	/**
-	 * Returns the current render target if there are, returns nullptr
-	 * otherwise.
+	 * Returns the current render target if there is, returns nullptr otherwise.
 	 */
 	const Gpu::FrameBuffer* get_target() const;
 	

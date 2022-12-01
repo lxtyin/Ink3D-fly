@@ -22,50 +22,53 @@
 
 #pragma once
 
-#include "RenderPass.h"
+#include "Matrix.h"
 
 namespace Ink {
 
-class CopyPass : public RenderPass {
+enum EulerOrder {
+	EULER_XYZ,
+	EULER_XZY,
+	EULER_YXZ,
+	EULER_YZX,
+	EULER_ZXY,
+	EULER_ZYX,
+};
+
+class Euler {
 public:
-	/**
-	 * Creates a new CopyPass.
-	 */
-	explicit CopyPass() = default;
+	float x = 0;              /* the rotation angle of X axis */
+	float y = 0;              /* the rotation angle of Y axis */
+	float z = 0;              /* the rotation angle of Z axis */
+	int order = EULER_XYZ;    /* the order of rotations */
 	
 	/**
-	 * Initializes the render pass and prepare the resources for rendering.
+	 * Creates a new Euler object.
 	 */
-	void init() override;
+	explicit Euler() = default;
 	
 	/**
-	 * Compiles if the shaders are not compiled yet. It will be automatically
-	 * invoked by the process method.
-	 */
-	void compile() override;
-	
-	/**
-	 * Renders to the render target after the shaders are compiled. It will be
-	 * automatically invoked by the process method.
-	 */
-	void render() const override;
-	
-	/**
-	 * Returns the 2D texture represents the input of rendering pass.
-	 */
-	const Gpu::Texture* get_texture() const;
-	
-	/**
-	 * Sets the specified 2D texture as the input of rendering pass.
+	 * Creates a new Euler object and initializes it with rotations and order.
 	 *
-	 * \param t source texture
+	 * \param x the rotation angle of X axis
+	 * \param y the rotation angle of Y axis
+	 * \param z the rotation angle of Z axis
+	 * \param o the order of rotations
 	 */
-	void set_texture(const Gpu::Texture* t);
+	explicit Euler(float x, float y, float z, int o = EULER_XYZ);
 	
-private:
-	const Gpu::Texture* map = nullptr;
+	/**
+	 * Creates a new Euler object and initializes it with rotations and order.
+	 *
+	 * \param r the rotation vector
+	 * \param o the order of rotations
+	 */
+	explicit Euler(Vec3 r, int o = EULER_XYZ);
 	
-	std::unique_ptr<Gpu::Shader> copy_shader;
+	/**
+	 * Transforms the Euler angles to rotation matrix.
+	 */
+	Mat3 to_rotation_matrix() const;
 };
 
 }

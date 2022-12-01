@@ -20,27 +20,50 @@
  * SOFTWARE.
  */
 
-#pragma once
-
-#include "../math/Maths.h"
+#include "BlendPass.h"
 
 namespace Ink {
 
-class LinearFog {
-public:
-	bool visible = true;       /**< whether the fog is visible */
-	Vec3 color = {1, 1, 1};    /**< the color of fog */
-	float near = 1;            /**< the nearest distance of fog */
-	float far = 1000;          /**< the farthest distance of fog */
-	
-	/**
-	 * Creates a new Fog object and initializes it with color and distances.
-	 *
-	 * \param c the color of fog
-	 * \param n the nearest distance of fog
-	 * \param f the farthest distance of fog
-	 */
-	explicit LinearFog(const Vec3& c = {1, 1, 1}, float n = 1, float f = 1000);
-};
+void BlendPass::init() {}
+
+void BlendPass::render() const {
+	Defines blend_defines;
+	blend_defines.set("BLEND_OP(a, b)", operation);
+	blend_defines.set("A_SWIZZLE", swizzle_a);
+	blend_defines.set("B_SWIZZLE", swizzle_b);
+	auto* blend_shader = ShaderLib::fetch("Blend", blend_defines);
+	blend_shader->use_program();
+	blend_shader->set_uniform_i("map_a", map_a->activate(0));
+	blend_shader->set_uniform_i("map_b", map_b->activate(1));
+	RenderPass::render_to(blend_shader, target);
+}
+
+const Gpu::Texture* BlendPass::get_texture_a() const {
+	return map_a;
+}
+
+void BlendPass::set_texture_a(const Gpu::Texture* t) {
+	map_a = t;
+}
+
+const Gpu::Texture* BlendPass::get_texture_b() const {
+	return map_b;
+}
+
+void BlendPass::set_texture_b(const Gpu::Texture* t) {
+	map_b = t;
+}
+
+void BlendPass::set_operation(const std::string& o) {
+	operation = o;
+}
+
+void BlendPass::set_swizzle_a(const std::string& s) {
+	swizzle_a = s;
+}
+
+void BlendPass::set_swizzle_b(const std::string& s) {
+	swizzle_b = s;
+}
 
 }
