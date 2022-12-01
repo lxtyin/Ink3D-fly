@@ -130,7 +130,8 @@ void Renderer::render_skybox(const Camera& c) const {
 	Gpu::FrameBuffer::activate(target);
 	
 	/* set the depth & stencil test */
-	Gpu::enable_depth_test();
+//	Gpu::enable_depth_test();
+    Gpu::disable_depth_test();
 	Gpu::set_depth_func(FUNC_ALWAYS);
 	Gpu::disable_stencil_test();
 	

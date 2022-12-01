@@ -329,7 +329,9 @@ public:
 	 * \param shader shader
 	 */
 	static void set_light_uniforms(const Scene& s, const Gpu::Shader& shader);
-	
+
+    std::unordered_map<const Mesh*, std::unique_ptr<Gpu::VertexObject[]> > cache_mesh;
+
 private:
 	struct RenderInfo {
 		bool transparent = false;
@@ -360,8 +362,7 @@ private:
 	float skybox_intensity = 1;
 	
 	std::unique_ptr<Gpu::Texture> skybox_map;
-	
-	std::unordered_map<const Mesh*, std::unique_ptr<Gpu::VertexObject[]> > cache_mesh;
+
 	
 	std::unordered_map<const Image*, std::unique_ptr<Gpu::Texture> > cache_image;
 	

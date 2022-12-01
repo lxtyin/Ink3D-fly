@@ -62,8 +62,9 @@ set(
         ink/lights/Shadow.cxx
         ink/lights/DirectionalLight.cxx
         libs/glad/glad.c
+#        test/shading/ShadingTest.cxx
         Asserts/GetStart.cxx
-        Asserts/MyCamera.cpp Asserts/MyCamera.h Asserts/expend.cpp Asserts/expend.h Asserts/ModelLoader.cpp Asserts/ModelLoader.h)
+        Asserts/MyCamera.cpp Asserts/MyCamera.h Asserts/expend.cpp Asserts/expend.h Asserts/ModelLoader.cpp Asserts/ModelLoader.h Asserts/ParticleInstance.cpp Asserts/ParticleInstance.h)
 
 
 find_package(SDL2 REQUIRED)
