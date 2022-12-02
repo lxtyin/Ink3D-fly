@@ -146,11 +146,35 @@ void load() {
 
     // load parper plane, forward: z
     plane          = Ink::Instance::create();
-    plane_mesh = new Ink::Mesh(Ink::Loader::load_obj(M_PATH "Plane/plane.obj")[0]);
-    Ink::Material *plane_mat = new Ink::Material(Ink::Loader::load_mtl(M_PATH "Plane/plane.mtl")[0]);
-    plane_mesh->create_normals();
+//    plane_mesh = new Ink::Mesh(Ink::Loader::load_obj(M_PATH "Plane/plane.obj")[0]);
+//    Ink::Material *plane_mat = new Ink::Material(Ink::Loader::load_mtl(M_PATH "Plane/plane.mtl")[0]);
+//    plane_mesh->create_normals();
     plane->rotation.order = Ink::EULER_YXZ;
 
+    Ink::Material *plane_mat = new Ink::Material("plane_mat");
+    plane_mat->emissive = Vec3(3, 3, 3);
+    plane_mat->side = Ink::DOUBLE_SIDE;
+    plane_mat->transparent = true;
+    plane_mat->blending = true;
+    plane_mat->color_map = new Ink::Image(Ink::Loader::load_image(P_PATH "y2.png"));
+    plane_mat->color_map->flip_vertical();
+
+    plane_mesh = new Ink::Mesh();
+    plane_mesh->vertex.push_back(Vec3(10, 0, -10));
+    plane_mesh->vertex.push_back(Vec3(-10, 0, -10));
+    plane_mesh->vertex.push_back(Vec3(10, 0, 10));
+    plane_mesh->vertex.push_back(Vec3(-10, 0, -10));
+    plane_mesh->vertex.push_back(Vec3(-10, 0, 10));
+    plane_mesh->vertex.push_back(Vec3(10, 0, 10));
+    plane_mesh->uv.push_back(Ink::Vec2(0, 0));
+    plane_mesh->uv.push_back(Ink::Vec2(1, 0));
+    plane_mesh->uv.push_back(Ink::Vec2(0, 1));
+    plane_mesh->uv.push_back(Ink::Vec2(1, 0));
+    plane_mesh->uv.push_back(Ink::Vec2(1, 1));
+    plane_mesh->uv.push_back(Ink::Vec2(0, 1));
+    plane_mesh->create_normals();
+    plane_mesh->groups.push_back({plane_mat->name, 0, 6});
+    plane->scale = Vec3(0.1, 0.1, 0.1);
     plane->mesh = plane_mesh;
     scene.add(plane);
     scene.set_material(plane_mat->name, plane_mesh, plane_mat);
@@ -158,7 +182,6 @@ void load() {
 //    scene_obj = Ink::load_model(M_PATH "lakeside/lakeside_-_exterior_scene.glb", scene);
     scene_obj = Ink::load_model(M_PATH "house/low_poly_winter_scene.glb", scene);
     scene_obj->scale = Vec3(15, 15, 15);
-    scene_obj->cast_shadow = false;
 
     // 环境光
     Ink::HemisphereLight *hemlight = new Ink::HemisphereLight();
@@ -184,36 +207,37 @@ void load() {
     plight->position = Vec3(60, 40, -50);
     scene.add_light(plight);
 
+
     // 粒子
     Ink::Material *particle_mat = new Ink::Material("particle_material");
-    particle_mat->emissive = Vec3(2, 2, 2);
+    particle_mat->emissive = Vec3(1.5, 1.5, 1.5);
     particle_mat->side = Ink::DOUBLE_SIDE;
-    particle_mat->transparent = true;
+//    particle_mat->transparent = true;
 //    particle_mat->blending = true;
-    particle_mat->color_map = new Ink::Image(Ink::Loader::load_image(P_PATH "y2.png"));
-    particle_mat->color_map->flip_vertical();
+//    particle_mat->color_map = new Ink::Image(Ink::Loader::load_image(P_PATH "y2.png"));
+//    particle_mat->color_map->flip_vertical();
     particle_instance = new Ink::ParticleInstance(
-            0.01,
+            0.005,
             [&](Ink::Particle &p){
-                p.lifetime = 30;
+                p.lifetime = 40;
                 Vec3 d1(Vec3(rand() % 20 - 10, 0, rand() % 20 - 10) / 2);
                 Vec3 d2(Vec3(0, rand() % 10, 0) / 2);
                 Vec3 d3 = d1 + d2;
                 p.vers.push_back(Vec3(0, 0, 0));
-                p.vers.push_back(d1);
-                p.vers.push_back(d2);
-                p.vers.push_back(d1);
-                p.vers.push_back(d3);
-                p.vers.push_back(d2);
+                p.vers.push_back(Vec3(rand() % 20 - 10, rand() % 20, rand() % 20 - 10) / 10);
+                p.vers.push_back(Vec3(rand() % 20 - 10, rand() % 20, rand() % 20 - 10) / 10);
+//                p.vers.push_back(d1);/*
+//                p.vers.push_back(d3);
+//                p.vers.push_back(d2);*/
 
-                p.uv.push_back(Ink::Vec2(0, 0));
-                p.uv.push_back(Ink::Vec2(1, 0));
-                p.uv.push_back(Ink::Vec2(0, 1));
-                p.uv.push_back(Ink::Vec2(1, 0));
-                p.uv.push_back(Ink::Vec2(1, 1));
-                p.uv.push_back(Ink::Vec2(0, 1));
+//                p.uv.push_back(Ink::Vec2(0, 0));
+//                p.uv.push_back(Ink::Vec2(1, 0));
+//                p.uv.push_back(Ink::Vec2(0, 1));
+//                p.uv.push_back(Ink::Vec2(1, 0));
+//                p.uv.push_back(Ink::Vec2(1, 1));
+//                p.uv.push_back(Ink::Vec2(0, 1));
 
-                p.position = Vec3(rand() % 400 - 200, rand() % 20 + 100, rand() % 400 - 200);
+                p.position = Vec3(rand() % 1000 - 500, rand() % 20 + 120, rand() % 1000 - 500);
             },
             [&](Ink::Particle &p, float dt){
                 p.position -= Vec3(0, 8, 0) * dt;
@@ -222,6 +246,7 @@ void load() {
             &renderer);
     scene.set_material(particle_mat->name, particle_instance->mesh, particle_mat);
     scene.add(particle_instance);
+
 
     viewer = Ink::MyViewer(Ink::PerspCamera(75 * Ink::DEG_TO_RAD, 1.77, 0.5, 2000), 30);
     viewer.set_position(Ink::Vec3(0, 0, -2));
