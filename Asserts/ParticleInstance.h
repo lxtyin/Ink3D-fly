@@ -17,6 +17,7 @@ namespace Ink{
     class Particle{
     public:
         std::vector<Vec3> vers;         /** < Should be a multiple of 3 */
+        std::vector<Vec2> uv;           /** < Should be a multiple of 3 */
         Vec3 position;
         float lifetime;
     };

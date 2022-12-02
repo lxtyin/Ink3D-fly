@@ -187,13 +187,32 @@ void load() {
     // 粒子
     Ink::Material *particle_mat = new Ink::Material("particle_material");
     particle_mat->emissive = Vec3(2, 2, 2);
+    particle_mat->side = Ink::DOUBLE_SIDE;
+    particle_mat->transparent = true;
+//    particle_mat->blending = true;
+    particle_mat->color_map = new Ink::Image(Ink::Loader::load_image(P_PATH "y2.png"));
+    particle_mat->color_map->flip_vertical();
     particle_instance = new Ink::ParticleInstance(
             0.01,
             [&](Ink::Particle &p){
                 p.lifetime = 30;
+                Vec3 d1(Vec3(rand() % 20 - 10, 0, rand() % 20 - 10) / 2);
+                Vec3 d2(Vec3(0, rand() % 10, 0) / 2);
+                Vec3 d3 = d1 + d2;
                 p.vers.push_back(Vec3(0, 0, 0));
-                p.vers.push_back(Vec3(rand() % 10, rand() % 10, rand() % 10) / 5);
-                p.vers.push_back(Vec3(rand() % 10, rand() % 10, rand() % 10) / 5);
+                p.vers.push_back(d1);
+                p.vers.push_back(d2);
+                p.vers.push_back(d1);
+                p.vers.push_back(d3);
+                p.vers.push_back(d2);
+
+                p.uv.push_back(Ink::Vec2(0, 0));
+                p.uv.push_back(Ink::Vec2(1, 0));
+                p.uv.push_back(Ink::Vec2(0, 1));
+                p.uv.push_back(Ink::Vec2(1, 0));
+                p.uv.push_back(Ink::Vec2(1, 1));
+                p.uv.push_back(Ink::Vec2(0, 1));
+
                 p.position = Vec3(rand() % 400 - 200, rand() % 20 + 100, rand() % 400 - 200);
             },
             [&](Ink::Particle &p, float dt){
@@ -282,6 +301,7 @@ void renderer_update(float dt){
     renderer.update_shadow(scene, *light);
     renderer.update_scene(scene);
     renderer.render(scene, viewer.get_camera());
+    renderer.render_transparent(scene, viewer.get_camera());
 
 #if !USE_FORWARD_PATH
     light_pass->set(&scene, &viewer.get_camera());

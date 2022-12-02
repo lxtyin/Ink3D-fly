@@ -24,9 +24,13 @@ namespace Ink{
 
     void ParticleInstance::update_mesh(){
         compose_mesh->vertex.clear();
+        compose_mesh->uv.clear();
         for(Particle *p : all_particles){
             for(Vec3 v : p->vers){
                 compose_mesh->vertex.push_back(p->position + v);
+            }
+            for(Vec2 v : p->uv){
+                compose_mesh->uv.push_back(v);
             }
         }
         compose_mesh->groups[0].length = compose_mesh->vertex.size();
