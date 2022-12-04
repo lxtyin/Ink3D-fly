@@ -191,10 +191,10 @@ void Renderer::load_scene(const Scene& s) {
 	
 	/* load the images linked with instance */
 	for (auto& material : s.get_materials()) {
-		for (int i = 0; i < 16; ++i) {
-			auto* image = material->get_image(i);
-			if (image != nullptr) load_image(image);
-		}
+        for (int i = 0; i < 16; ++i) {
+            auto* image = material->get_image(i);
+            if (image != nullptr) load_image(image);
+        }
 		if (material->normal_map != nullptr) {
 			load_image(material->normal_map);
 		}

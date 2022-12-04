@@ -4,12 +4,15 @@
 #include "expend.h"
 #include "ModelLoader.h"
 #include "ParticleInstance.h"
+#include "Remote.h"
 using Ink::Vec3;
 
 #define M_PATH "Asserts/models/"
 #define P_PATH "Asserts/images/"
-#define VP_WIDTH 1680
-#define VP_HEIGHT 960
+#define VP_WIDTH 1080
+#define VP_HEIGHT 720
+#define REMOTE_IP "10.21.234.116"
+#define REMOTE_PORT 8888
 
 //#define FREE_FLY //fly method.
 #define USE_FORWARD_PATH 0
@@ -17,10 +20,19 @@ using Ink::Vec3;
 Ink::Scene scene;
 Ink::MyViewer viewer;
 Ink::Renderer renderer;
+
 Ink::Instance *scene_obj;
-Ink::Instance *plane; //use 3 layer box to rotate around self-space.
+Ink::Instance *plane;
+Ink::Material *plane_material;
 Ink::ParticleInstance *particle_instance;
 float speed = 0;
+
+Remote *remote;
+struct Player {
+    Ink::Instance *instance;
+    Ink::Material *material;
+};
+std::map<int, Player> other_plane;
 
 Ink::Mesh *plane_mesh;
 
@@ -141,19 +153,20 @@ void renderer_load() {
 }
 
 void load() {
+
     Ink::Shadow::init(4096, 4096, 4);
     Ink::Shadow::set_samples(16);
 
     // load parper plane, forward: z
     plane          = Ink::Instance::create();
     plane_mesh = new Ink::Mesh(Ink::Loader::load_obj(M_PATH "Plane/plane.obj")[0]);
-    Ink::Material *plane_mat = new Ink::Material(Ink::Loader::load_mtl(M_PATH "Plane/plane.mtl")[0]);
+    plane_material = new Ink::Material(Ink::Loader::load_mtl(M_PATH "Plane/plane.mtl")[0]);
     plane_mesh->create_normals();
     plane->rotation.order = Ink::EULER_YXZ;
 
     plane->mesh = plane_mesh;
     scene.add(plane);
-    scene.set_material(plane_mat->name, plane_mesh, plane_mat);
+    scene.set_material(plane_material->name, plane_mesh, plane_material);
 
 //    scene_obj = Ink::load_model(M_PATH "lakeside/lakeside_-_exterior_scene.glb", scene);
     scene_obj = Ink::load_model(M_PATH "house/low_poly_winter_scene.glb", scene);
@@ -194,7 +207,7 @@ void load() {
                 p.vers.push_back(Vec3(0, 0, 0));
                 p.vers.push_back(Vec3(rand() % 10, rand() % 10, rand() % 10) / 5);
                 p.vers.push_back(Vec3(rand() % 10, rand() % 10, rand() % 10) / 5);
-                p.position = Vec3(rand() % 400 - 200, rand() % 20 + 100, rand() % 400 - 200);
+                p.position = Vec3(rand() % 600 - 300, rand() % 20 + 130, rand() % 600 - 300);
             },
             [&](Ink::Particle &p, float dt){
                 p.position -= Vec3(0, 8, 0) * dt;
@@ -208,6 +221,8 @@ void load() {
     viewer.set_position(Ink::Vec3(0, 0, -2));
 
     renderer_load();
+
+    remote = new Remote(REMOTE_IP, REMOTE_PORT);
 }
 
 void input_update(float dt){
@@ -230,17 +245,12 @@ void input_update(float dt){
         horizontal_box->position += cur_direction * 5 * dt;
     }
 #else
-//    Vec3 cdir = -viewer.get_camera().direction;
-//    Vec3 pdir = get_cur_direction();
-//    int flip = (cdir.x * pdir.x + cdir.z * pdir.z > 0 ? 1 : -1); //flip horizontal rotate.
-    int flip = 1;
-
     if(Ink::Window::is_down(SDLK_a)){
-        plane->rotation.y += dt * flip;
+        plane->rotation.y += dt;
         plane->rotation.z -= dt;
     }
     if(Ink::Window::is_down(SDLK_d)){
-        plane->rotation.y -= dt * flip;
+        plane->rotation.y -= dt;
         plane->rotation.z += dt;
     }
     if(Ink::Window::is_down(SDLK_w)){
@@ -251,9 +261,6 @@ void input_update(float dt){
     }
     if(Ink::Window::is_down(SDLK_SPACE)){
         speed = 100;
-        std::cout << plane->position.x << ' '
-                  << plane->position.y << ' '
-                  << plane->position.z << '\n';
     }
 #endif
 }
@@ -276,6 +283,45 @@ void kinetic_update(float dt){
 #endif
 }
 
+void network_update(float dt){
+    remote->update(plane->position, Vec3(plane->rotation.x, plane->rotation.y, plane->rotation.z));
+    auto vec = remote->get_status();
+
+    std::set<int> ids; // 所有player
+    for(Status &st : vec){
+        ids.insert(st.id);
+        if(!other_plane.count(st.id)){
+            // 生成新的plane，使用新material
+            Player cur;
+            cur.instance = Ink::Instance::create(str_format("plane_%d", st.id)); //加名字以让map区分
+
+            cur.material = new Ink::Material(str_format("plane_material%d", st.id));
+            cur.material->emissive = Vec3(rand() % 30, rand() % 30, rand() % 30) / 15; //随机颜色发光
+
+            cur.instance->mesh = plane->mesh;
+
+            scene.add(cur.instance);
+            scene.set_material(cur.material->name, cur.instance->mesh, cur.material);
+            other_plane[st.id] = cur;
+        }
+        other_plane[st.id].instance->position = st.position;
+        other_plane[st.id].instance->rotation = Ink::Euler(st.rotation, Ink::EULER_YXZ);
+    }
+
+    vector<int> to_del;
+    for(auto &[id, player] : other_plane){ // 没有的player
+        if(!ids.count(id)){
+            scene.remove_material(player.material->name, player.instance->mesh);
+            scene.remove(player.instance);
+            delete player.material;
+            delete player.instance;
+            to_del.push_back(id);
+            std::cout << "Del plane " << id << '\n';
+        }
+    }
+    for(int i : to_del) other_plane.erase(i);
+}
+
 void renderer_update(float dt){
     renderer.clear();
     renderer.render_skybox(viewer.get_camera());
@@ -295,6 +341,7 @@ void renderer_update(float dt){
 void update(float dt) {
     input_update(dt);
     kinetic_update(dt);
+    network_update(dt);
     viewer.update(dt);
 
     renderer_update(dt);
