@@ -83,6 +83,12 @@ vector<Status> Remote::get_status() {
     return players; //copy.
 }
 
+void Remote::logout() {
+    string str = str_format("Logout %d;", local_id);
+    std::cout << "Remote: logout" << std::endl;
+    send(s_client, str.c_str(), str.size(), 0);
+}
+
 void Remote::update(Vec3 position, Vec3 rotation) {
     Status st;
     st.id = local_id;

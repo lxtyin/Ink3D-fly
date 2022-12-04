@@ -9,13 +9,14 @@ using Ink::Vec3;
 
 #define M_PATH "Asserts/models/"
 #define P_PATH "Asserts/images/"
-#define VP_WIDTH 1080
-#define VP_HEIGHT 720
-#define REMOTE_IP "10.21.234.116"
+#define VP_WIDTH 1440
+#define VP_HEIGHT 900
+#define REMOTE_IP "124.223.118.118"
 #define REMOTE_PORT 8888
 
 //#define FREE_FLY //fly method.
 #define USE_FORWARD_PATH 0
+#define cur_time ((float)clock() / CLOCKS_PER_SEC)
 
 Ink::Scene scene;
 Ink::MyViewer viewer;
@@ -30,7 +31,9 @@ float speed = 0;
 Remote *remote;
 struct Player {
     Ink::Instance *instance;
-    Ink::Material *material;
+    Ink::Material* material;
+    Ink::Mesh* mesh;
+    float last_time;
 };
 std::map<int, Player> other_plane;
 
@@ -160,9 +163,12 @@ void load() {
     // load parper plane, forward: z
     plane          = Ink::Instance::create();
     plane_mesh = new Ink::Mesh(Ink::Loader::load_obj(M_PATH "Plane/plane.obj")[0]);
-    plane_material = new Ink::Material(Ink::Loader::load_mtl(M_PATH "Plane/plane.mtl")[0]);
+    plane_mesh->groups[0].name = "plane_material";
+    plane_material = new Ink::Material("plane_material");
+    plane_material->emissive = Vec3(1, 1, 1);
     plane_mesh->create_normals();
     plane->rotation.order = Ink::EULER_YXZ;
+    plane->scale = Vec3(2, 2, 2);
 
     plane->mesh = plane_mesh;
     scene.add(plane);
@@ -228,6 +234,7 @@ void load() {
 void input_update(float dt){
     if(Ink::Window::is_down(SDLK_ESCAPE)){
         Ink::Window::close();
+        remote->logout();
         exit(0);
     }
 #ifdef FREE_FLY
@@ -272,11 +279,11 @@ void kinetic_update(float dt){
     Vec3 cur_direction = Vec3(sin(hr) * cos(vr), sin(-vr), cos(hr) * cos(vr)); //?
 
     plane->position += cur_direction * speed * dt;
-    viewer.set_position(plane->position + viewer.get_camera().direction * 5);
+    viewer.set_position(plane->position + viewer.get_camera().direction * 10);
     light->position = viewer.get_camera().position - light->direction * 200;
     particle_instance->update(dt);
 
-    if(speed > 40) speed -= dt * 5;
+    if(speed > 20) speed -= dt * 7;
 #ifndef FREE_FLY
     plane->rotation.z *= 0.95;
     plane->rotation.x *= 0.95;
@@ -287,36 +294,41 @@ void network_update(float dt){
     remote->update(plane->position, Vec3(plane->rotation.x, plane->rotation.y, plane->rotation.z));
     auto vec = remote->get_status();
 
-    std::set<int> ids; // 所有player
     for(Status &st : vec){
-        ids.insert(st.id);
         if(!other_plane.count(st.id)){
-            // 生成新的plane，使用新material
+            // 生成新的plane，使用新mesh 和 新material
+            
             Player cur;
-            cur.instance = Ink::Instance::create(str_format("plane_%d", st.id)); //加名字以让map区分
+            cur.instance = Ink::Instance::create(str_format("plane_%d", st.id));
 
-            cur.material = new Ink::Material(str_format("plane_material%d", st.id));
+            cur.mesh = new Ink::Mesh(*plane->mesh);
+            cur.mesh->groups[0].name = str_format("plane_material%d", st.id);
+            renderer.load_mesh(cur.mesh);
+
+            cur.material = new Ink::Material(str_format("plane_material%d", st.id));   //加名字以区分
             cur.material->emissive = Vec3(rand() % 30, rand() % 30, rand() % 30) / 15; //随机颜色发光
 
-            cur.instance->mesh = plane->mesh;
+            cur.instance->mesh = cur.mesh;
+            cur.instance->scale = plane->scale;
 
             scene.add(cur.instance);
-            scene.set_material(cur.material->name, cur.instance->mesh, cur.material);
+            scene.set_material(cur.material->name, cur.mesh, cur.material);
             other_plane[st.id] = cur;
         }
         other_plane[st.id].instance->position = st.position;
         other_plane[st.id].instance->rotation = Ink::Euler(st.rotation, Ink::EULER_YXZ);
+        other_plane[st.id].last_time = cur_time;
     }
 
     vector<int> to_del;
-    for(auto &[id, player] : other_plane){ // 没有的player
-        if(!ids.count(id)){
+    for(auto &[id, player] : other_plane){ // 未更新的player
+        if(cur_time - player.last_time > 1){ 
             scene.remove_material(player.material->name, player.instance->mesh);
             scene.remove(player.instance);
             delete player.material;
+            delete player.mesh;
             delete player.instance;
             to_del.push_back(id);
-            std::cout << "Del plane " << id << '\n';
         }
     }
     for(int i : to_del) other_plane.erase(i);
