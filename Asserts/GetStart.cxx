@@ -4,23 +4,38 @@
 #include "expend.h"
 #include "ModelLoader.h"
 #include "ParticleInstance.h"
+#include "Remote.h"
 using Ink::Vec3;
 
 #define M_PATH "Asserts/models/"
 #define P_PATH "Asserts/images/"
-#define VP_WIDTH 1680
-#define VP_HEIGHT 960
+#define VP_WIDTH 1440
+#define VP_HEIGHT 900
+#define REMOTE_IP "124.223.118.118"
+#define REMOTE_PORT 8888
 
 //#define FREE_FLY //fly method.
 #define USE_FORWARD_PATH 0
+#define cur_time ((float)clock() / CLOCKS_PER_SEC)
 
 Ink::Scene scene;
 Ink::MyViewer viewer;
 Ink::Renderer renderer;
+
 Ink::Instance *scene_obj;
-Ink::Instance *plane; //use 3 layer box to rotate around self-space.
+Ink::Instance *plane;
+Ink::Material *plane_material;
 Ink::ParticleInstance *particle_instance;
 float speed = 0;
+
+Remote *remote;
+struct Player {
+    Ink::Instance *instance;
+    Ink::Material* material;
+    Ink::Mesh* mesh;
+    float last_time;
+};
+std::map<int, Player> other_plane;
 
 Ink::Mesh *plane_mesh;
 
@@ -141,19 +156,23 @@ void renderer_load() {
 }
 
 void load() {
+
     Ink::Shadow::init(4096, 4096, 4);
     Ink::Shadow::set_samples(16);
 
     // load parper plane, forward: z
     plane          = Ink::Instance::create();
     plane_mesh = new Ink::Mesh(Ink::Loader::load_obj(M_PATH "Plane/plane.obj")[0]);
-    Ink::Material *plane_mat = new Ink::Material(Ink::Loader::load_mtl(M_PATH "Plane/plane.mtl")[0]);
+    plane_mesh->groups[0].name = "plane_material";
+    plane_material = new Ink::Material("plane_material");
+    plane_material->emissive = Vec3(1, 1, 1);
     plane_mesh->create_normals();
     plane->rotation.order = Ink::EULER_YXZ;
+    plane->scale = Vec3(2, 2, 2);
 
     plane->mesh = plane_mesh;
     scene.add(plane);
-    scene.set_material(plane_mat->name, plane_mesh, plane_mat);
+    scene.set_material(plane_material->name, plane_mesh, plane_material);
 
 //    scene_obj = Ink::load_model(M_PATH "lakeside/lakeside_-_exterior_scene.glb", scene);
     scene_obj = Ink::load_model(M_PATH "house/low_poly_winter_scene.glb", scene);
@@ -194,7 +213,7 @@ void load() {
                 p.vers.push_back(Vec3(0, 0, 0));
                 p.vers.push_back(Vec3(rand() % 10, rand() % 10, rand() % 10) / 5);
                 p.vers.push_back(Vec3(rand() % 10, rand() % 10, rand() % 10) / 5);
-                p.position = Vec3(rand() % 400 - 200, rand() % 20 + 100, rand() % 400 - 200);
+                p.position = Vec3(rand() % 600 - 300, rand() % 20 + 130, rand() % 600 - 300);
             },
             [&](Ink::Particle &p, float dt){
                 p.position -= Vec3(0, 8, 0) * dt;
@@ -208,11 +227,14 @@ void load() {
     viewer.set_position(Ink::Vec3(0, 0, -2));
 
     renderer_load();
+
+    remote = new Remote(REMOTE_IP, REMOTE_PORT);
 }
 
 void input_update(float dt){
     if(Ink::Window::is_down(SDLK_ESCAPE)){
         Ink::Window::close();
+        remote->logout();
         exit(0);
     }
 #ifdef FREE_FLY
@@ -230,17 +252,12 @@ void input_update(float dt){
         horizontal_box->position += cur_direction * 5 * dt;
     }
 #else
-//    Vec3 cdir = -viewer.get_camera().direction;
-//    Vec3 pdir = get_cur_direction();
-//    int flip = (cdir.x * pdir.x + cdir.z * pdir.z > 0 ? 1 : -1); //flip horizontal rotate.
-    int flip = 1;
-
     if(Ink::Window::is_down(SDLK_a)){
-        plane->rotation.y += dt * flip;
+        plane->rotation.y += dt;
         plane->rotation.z -= dt;
     }
     if(Ink::Window::is_down(SDLK_d)){
-        plane->rotation.y -= dt * flip;
+        plane->rotation.y -= dt;
         plane->rotation.z += dt;
     }
     if(Ink::Window::is_down(SDLK_w)){
@@ -251,9 +268,6 @@ void input_update(float dt){
     }
     if(Ink::Window::is_down(SDLK_SPACE)){
         speed = 100;
-        std::cout << plane->position.x << ' '
-                  << plane->position.y << ' '
-                  << plane->position.z << '\n';
     }
 #endif
 }
@@ -265,15 +279,59 @@ void kinetic_update(float dt){
     Vec3 cur_direction = Vec3(sin(hr) * cos(vr), sin(-vr), cos(hr) * cos(vr)); //?
 
     plane->position += cur_direction * speed * dt;
-    viewer.set_position(plane->position + viewer.get_camera().direction * 5);
+    viewer.set_position(plane->position + viewer.get_camera().direction * 10);
     light->position = viewer.get_camera().position - light->direction * 200;
     particle_instance->update(dt);
 
-    if(speed > 40) speed -= dt * 5;
+    if(speed > 20) speed -= dt * 7;
 #ifndef FREE_FLY
     plane->rotation.z *= 0.95;
     plane->rotation.x *= 0.95;
 #endif
+}
+
+void network_update(float dt){
+    remote->update(plane->position, Vec3(plane->rotation.x, plane->rotation.y, plane->rotation.z));
+    auto vec = remote->get_status();
+
+    for(Status &st : vec){
+        if(!other_plane.count(st.id)){
+            // 生成新的plane，使用新mesh 和 新material
+            
+            Player cur;
+            cur.instance = Ink::Instance::create(str_format("plane_%d", st.id));
+
+            cur.mesh = new Ink::Mesh(*plane->mesh);
+            cur.mesh->groups[0].name = str_format("plane_material%d", st.id);
+            renderer.load_mesh(cur.mesh);
+
+            cur.material = new Ink::Material(str_format("plane_material%d", st.id));   //加名字以区分
+            cur.material->emissive = Vec3(rand() % 30, rand() % 30, rand() % 30) / 15; //随机颜色发光
+
+            cur.instance->mesh = cur.mesh;
+            cur.instance->scale = plane->scale;
+
+            scene.add(cur.instance);
+            scene.set_material(cur.material->name, cur.mesh, cur.material);
+            other_plane[st.id] = cur;
+        }
+        other_plane[st.id].instance->position = st.position;
+        other_plane[st.id].instance->rotation = Ink::Euler(st.rotation, Ink::EULER_YXZ);
+        other_plane[st.id].last_time = cur_time;
+    }
+
+    vector<int> to_del;
+    for(auto &[id, player] : other_plane){ // 未更新的player
+        if(cur_time - player.last_time > 1){ 
+            scene.remove_material(player.material->name, player.instance->mesh);
+            scene.remove(player.instance);
+            delete player.material;
+            delete player.mesh;
+            delete player.instance;
+            to_del.push_back(id);
+        }
+    }
+    for(int i : to_del) other_plane.erase(i);
 }
 
 void renderer_update(float dt){
@@ -295,6 +353,7 @@ void renderer_update(float dt){
 void update(float dt) {
     input_update(dt);
     kinetic_update(dt);
+    network_update(dt);
     viewer.update(dt);
 
     renderer_update(dt);

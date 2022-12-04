@@ -66,11 +66,11 @@ set(
         libs/glad/glad.c
 #        test/shading/ShadingTest.cxx
         Asserts/GetStart.cxx
-        Asserts/MyCamera.cpp Asserts/MyCamera.h Asserts/expend.cpp Asserts/expend.h Asserts/ModelLoader.cpp Asserts/ModelLoader.h Asserts/ParticleInstance.cpp Asserts/ParticleInstance.h)
+        Asserts/MyCamera.cpp Asserts/MyCamera.h Asserts/expend.cpp Asserts/expend.h Asserts/ModelLoader.cpp Asserts/ModelLoader.h Asserts/ParticleInstance.cpp Asserts/ParticleInstance.h remote/Remote.cpp remote/Remote.h)
 
 
 find_package(SDL2 REQUIRED)
-include_directories(${SDL2_INCLUDE_DIRS} assimp)
+include_directories(${SDL2_INCLUDE_DIRS} assimp remote)
 link_directories(${SDL2_LIBDIR} assimp)
 
 set(
@@ -83,4 +83,4 @@ set(
 
 add_executable(Ink3D ${SOURCES})
 
-target_link_libraries(Ink3D ${DEPENDENCIES})
+target_link_libraries(Ink3D ${DEPENDENCIES} -lwsock32 -lpthread)
