@@ -11,7 +11,8 @@ using Ink::Vec3;
 #define P_PATH "Asserts/images/"
 #define VP_WIDTH 1440
 #define VP_HEIGHT 900
-#define REMOTE_IP "124.223.118.118"
+//#define REMOTE_IP "124.223.118.118"
+#define REMOTE_IP "127.0.0.1"
 #define REMOTE_PORT 8888
 
 //#define FREE_FLY //fly method.
@@ -33,7 +34,9 @@ struct Player {
     Ink::Instance *instance;
     Ink::Material* material;
     Ink::Mesh* mesh;
-    float last_time;
+    Ink::ParticleInstance* trail;
+    Ink::Material* trail_mat;
+    float last_update_time;
     float speed;
 };
 std::map<int, Player> other_plane;
@@ -223,7 +226,7 @@ void load() {
             [&](Ink::Particle &p, float dt){
                 p.position -= Vec3(0, 8, 0) * dt;
             },
-            *particle_mat,
+            particle_mat->name,
             &renderer);
     scene.set_material(particle_mat->name, particle_instance->mesh, particle_mat);
     scene.add(particle_instance);
@@ -248,7 +251,7 @@ void load() {
             [&](Ink::Particle &p, float dt){
                 p.position += p.direction * 7 * dt;
             },
-            *trail_mat,
+            trail_mat->name,
             &renderer);
     scene.set_material(trail_mat->name, trail->mesh, trail_mat);
     scene.add(trail);
@@ -321,15 +324,14 @@ void kinetic_update(float dt){
 }
 
 void network_update(float dt){
-    if(!remote->updated) return;
 
-    remote->updated = false;
     remote->update(plane->position, Vec3(plane->rotation.x, plane->rotation.y, plane->rotation.z), speed);
-    auto vec = remote->get_status();
+    while(true){
+        Status st = remote->get_status();
+        if(!st.id) break;
 
-    for(Status &st : vec){
-        if(!other_plane.count(st.id)){
-            // 生成新的plane，使用新mesh 和 新material
+        if(!other_plane.count(st.id)) {
+            // 生成新的plane，使用新mesh 和 新material 新trail
             Player cur;
             cur.instance = Ink::Instance::create(str_format("plane_%d", st.id));
 
@@ -345,23 +347,53 @@ void network_update(float dt){
 
             scene.add(cur.instance);
             scene.set_material(cur.material->name, cur.mesh, cur.material);
+            
+            // cur.trail_mat = new Ink::Material(str_format("trail_mat%d", st.id));
+            // cur.trail_mat->emissive = cur.material->emissive + Vec3(rand() % 10, rand() % 10, rand() % 10) / 10; //随机拖尾颜色偏差
+            // cur.trail = new Ink::ParticleInstance(
+            //     0.03,
+            //     [&](Ink::Particle& p) {
+            //         p.lifetime = 4;
+            //         p.vers.push_back(Vec3(0, 0, 0));
+            //         p.vers.push_back(Vec3(rand() % 10, rand() % 10, rand() % 10) / 10);
+            //         p.vers.push_back(Vec3(rand() % 10, rand() % 10, rand() % 10) / 10);
+
+            //         p.direction = Vec3(rand() % 10 - 5, rand() % 10 - 5, rand() % 10 - 5).normalize();
+
+            //         p.position = cur.instance->position
+            //             - 2 * direction_EYXZ_Z(cur.instance->rotation)
+            //             + p.direction / 2;
+            //     },
+            //     [&](Ink::Particle& p, float dt) {
+            //         p.position += p.direction * 7 * dt;
+            //     },
+            // cur.trail_mat->name,
+            // &renderer);
+            // scene.set_material(cur.trail_mat->name, cur.trail->mesh, cur.trail_mat);
+            // scene.add(cur.trail);
+            
             other_plane[st.id] = cur;
         }
+
         Player& cur = other_plane[st.id];
         cur.speed = st.speed;
         cur.instance->position = st.position;
         cur.instance->rotation = Ink::Euler(st.rotation, Ink::EULER_YXZ);
-        cur.last_time = cur_time;
+        cur.last_update_time = cur_time;
     }
 
     vector<int> to_del;
     for(auto &[id, player] : other_plane){ // 未更新的player
-        if(cur_time - player.last_time > 1){ 
+        if(cur_time - player.last_update_time > 1){
             scene.remove_material(player.material->name, player.instance->mesh);
+            scene.remove_material(player.trail_mat->name, player.trail->mesh);
             scene.remove(player.instance);
+            scene.remove(player.trail);
             delete player.material;
             delete player.mesh;
             delete player.instance;
+            delete player.trail;
+            delete player.trail_mat;
             to_del.push_back(id);
         }
     }
@@ -392,6 +424,10 @@ void update(float dt) {
     // particle update
     trail->emit_interval = 100.0f / std::max(1.0f, speed * speed);
     trail->update(dt);
+    // for(auto& [id, player] : other_plane) {
+    //     player.trail->emit_interval = 100.0f / std::max(1.0f, player.speed * player.speed);
+    //     player.trail->update(dt);
+    // }
     particle_instance->update(dt);
 
     viewer.update(dt);

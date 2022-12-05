@@ -28,7 +28,7 @@ namespace Ink{
         float cumulative_time = 0;
 
         Mesh *compose_mesh;
-        Renderer *renderer;
+        Renderer* renderer;
 
         std::function<void(Particle&)> init_func;                     /**< initialize function for each particle */
         std::function<void(Particle&, float dt)> update_func;         /**< update function for each particle */
@@ -38,6 +38,7 @@ namespace Ink{
          */
         void update_mesh();
     public:
+        
         float emit_interval = 0.1;
 
         /**
@@ -52,14 +53,13 @@ namespace Ink{
          * \param interval emit interval
          * \param init initialize function for each particle
          * \param upd update function for each particle (No need to modify lifetime)
-         * \param material only to get a name in this version, material should add to scene alone.
-         * \param n instance name
+         * \param groupname material name
          */
         explicit ParticleInstance(float interval,
                                   const std::function<void(Particle&)> &init,
                                   const std::function<void(Particle&, float dt)> &upd,
-                                  const Material &material,
-                                  Renderer *r,
+                                  const string& groupname,
+                                  Renderer* r,
                                   const std::string& n = "");
     };
 }

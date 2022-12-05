@@ -59,8 +59,8 @@ inline vector<Message> fetch_message(const string &data){
 
 struct Status {
     int id;
-    float time; //此状态时间戳，判断旧消息
     float speed;
+    float time; //此状态时间戳，判断旧消息
     Vec3 position;
     Vec3 rotation;
     Status() = default;

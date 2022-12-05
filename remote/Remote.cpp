@@ -13,21 +13,22 @@ void Remote::listen_thread() {
             revData[ret] = 0x00;
 
             auto msg_vec = fetch_message(revData);
-            update_lock.lock();
-            {
-                for(Message &msg : msg_vec){
-                    if(msg.type == "Boardcast") {
-                        players.clear();
+            for(Message &msg : msg_vec){
+                if(msg.type == "Boardcast") {
+                    update_lock.lock();
+                    {
                         for(auto& st : fetch_status(msg.content)) {
-                            if(st.id != local_id) players.emplace_back(st);
+                            if(st.id != local_id && st.time > latest_time[st.id]){
+                                latest_time[st.id] = st.time;
+                                dirty_status.push(st);
+                            }
                         }
-                        updated = true;
-                    } else {
-                        std::cout << "Remote: unknow message: " << msg.content << std::endl;
                     }
+                    update_lock.unlock();
+                } else {
+                    std::cout << "Remote: unknow message: " << msg.content << std::endl;
                 }
             }
-            update_lock.unlock();
         } else {
             std::cout << "Remote: server error" << std::endl;
             return;
@@ -82,8 +83,19 @@ Remote::Remote(const string &ip, int hton) {
     s_client = -1;
 }
 
-vector<Status> Remote::get_status() {
-    return players; //copy.
+Status Remote::get_status() {
+    Status res;
+    update_lock.lock();
+    {
+        if(dirty_status.empty()){
+            res.id = 0;
+        } else {
+            res = dirty_status.front();
+            dirty_status.pop();
+        }
+    }
+    update_lock.unlock();
+    return res;
 }
 
 void Remote::logout() {

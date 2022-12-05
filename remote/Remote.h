@@ -15,20 +15,36 @@ class Remote {
     SOCKET s_client;
     int local_id;
     std::mutex update_lock;
-    vector<Status> players;  /** < id : player_status, will be automatically maintained.*/
+    std::queue<Status> dirty_status;    /** < new received status, which has not be used.*/
+    std::map<int, float> latest_time;     /** < latest game time of each player, to avoid disorder. */
 
     void listen_thread();
-
 public:
 
-    bool updated;           /** < dirty flag */
-
+    /**
+     * construct and link.
+     * \param ip
+     * \param hton
+     */
     Remote(const string &ip, int hton);
 
-    vector<Status> get_status();
+    /**
+     * pop one status from dirty status.
+     * \return if empty, return Status.id = 0.
+     */
+    Status get_status();
 
+    /**
+     * send Status to remote server.
+     * \param position
+     * \param rotation
+     * \param speed
+     */
     void update(Vec3 position, Vec3 rotation, float speed);
 
+    /**
+     * send logout information.
+     */
     void logout();
 };
 
