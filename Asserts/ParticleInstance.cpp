@@ -3,8 +3,6 @@
 //
 
 #include "ParticleInstance.h"
-#include <string>
-using std::string;
 
 namespace Ink {
 

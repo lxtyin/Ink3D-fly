@@ -9,6 +9,8 @@
 #include "../ink/objects/Material.h"
 #include "../ink/renderer/Renderer.h"
 #include <set>
+#include <string>
+using std::string;
 
 namespace Ink{
     /**

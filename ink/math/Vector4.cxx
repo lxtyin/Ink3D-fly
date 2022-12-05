@@ -21,7 +21,7 @@
  */
 
 #include "Vector4.h"
-
+#include <cmath>
 #include <sstream>
 
 namespace Ink {

@@ -11,8 +11,7 @@ using Ink::Vec3;
 #define P_PATH "Asserts/images/"
 #define VP_WIDTH 1440
 #define VP_HEIGHT 900
-//#define REMOTE_IP "124.223.118.118"
-#define REMOTE_IP "127.0.0.1"
+#define REMOTE_IP "124.223.118.118"
 #define REMOTE_PORT 8888
 
 //#define FREE_FLY //fly method.
