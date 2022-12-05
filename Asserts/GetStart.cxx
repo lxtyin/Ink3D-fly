@@ -172,8 +172,8 @@ void load() {
     plane_mesh = new Ink::Mesh(Ink::Loader::load_obj(M_PATH "Plane/plane.obj")[0]);
     plane_mesh->groups[0].name = "plane_material";
     plane_material = new Ink::Material("plane_material");
-    plane_material->emissive = Vec3(1, 1, 1);
-    plane_mesh->create_normals();
+//    plane_mesh->create_normals();
+    plane_material->emissive = Vec3(0.5, 0.5, 0.5);
     plane->rotation.order = Ink::EULER_YXZ;
     plane->scale = Vec3(2, 2, 2);
 
@@ -199,7 +199,7 @@ void load() {
     light->cast_shadow = true;
     light->shadow.activate();
     light->shadow.camera = Ink::OrthoCamera(-300, 300, -300, 300, 0.1, 2000);
-    light->shadow.bias = 0.00005;
+    light->shadow.bias = 0.005;
 	scene.add_light(light);
 
     // 点光源
@@ -300,6 +300,9 @@ void input_update(float dt){
     }
     if(Ink::Window::is_down(SDLK_SPACE)){
         speed = 100;
+        viewer.set_fov(100 * Ink::DEG_TO_RAD);
+    } else {
+        viewer.set_fov(75 * Ink::DEG_TO_RAD);
     }
 #endif
 }

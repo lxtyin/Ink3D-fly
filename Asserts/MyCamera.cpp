@@ -24,7 +24,7 @@
 
 namespace Ink {
 
-    MyViewer::MyViewer(const Camera& c, float s) : camera(c), speed(s) {}
+    MyViewer::MyViewer(const PerspCamera& c, float s) : camera(c), speed(s) {}
 
     void MyViewer::update(float dt) {
 
@@ -50,6 +50,13 @@ namespace Ink {
         late_axis_y += std::clamp(dty * 0.2f, -0.2f, 0.2f);
         late_axis_z += std::clamp(dtz * 0.2f, -0.2f, 0.2f);
 
+        /* fov back */
+        float dtfov = lead_fov - camera.fov_y;
+        float rate = 0.3f;
+        if(dtfov < 0) rate = 0.01f;
+        camera.set(camera.fov_y + dtfov * rate, camera.aspect, camera.near, camera.far);
+
+
         /* update the viewing direction of camera */
         camera.direction.x = sinf(late_axis_y) * cosf(late_axis_z);
         camera.direction.y = sinf(late_axis_z);
@@ -63,6 +70,10 @@ namespace Ink {
         camera.lookat(camera.position, -camera.direction, camera.up);
     }
 
+    void MyViewer::set_fov(float fov) {
+        lead_fov = fov;
+    }
+
     void MyViewer::set_axis_y(float y){
         axis_y = y;
     }
@@ -72,11 +83,6 @@ namespace Ink {
 
     const Camera& MyViewer::get_camera() const {
         return camera;
-    }
-
-    void MyViewer::set_camera(const Camera& c) {
-        camera = c;
-        set_direction(c.direction);
     }
 
     void MyViewer::set_position(const Vec3& p) {
