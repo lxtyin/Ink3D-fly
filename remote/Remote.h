@@ -21,14 +21,15 @@ class Remote {
 
 public:
 
+    bool updated;           /** < dirty flag */
+
     Remote(const string &ip, int hton);
 
     vector<Status> get_status();
 
-    void update(Vec3 position, Vec3 rotation);
+    void update(Vec3 position, Vec3 rotation, float speed);
 
     void logout();
 };
-
 
 #endif //INK3D_REMOTE_H

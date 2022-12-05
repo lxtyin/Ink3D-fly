@@ -16,7 +16,6 @@ using Ink::Vec3;
 
 //#define FREE_FLY //fly method.
 #define USE_FORWARD_PATH 0
-#define cur_time ((float)clock() / CLOCKS_PER_SEC)
 
 Ink::Scene scene;
 Ink::MyViewer viewer;
@@ -24,8 +23,9 @@ Ink::Renderer renderer;
 
 Ink::Instance *scene_obj;
 Ink::Instance *plane;
+Ink::Mesh *plane_mesh;
 Ink::Material *plane_material;
-Ink::ParticleInstance *particle_instance;
+Ink::ParticleInstance *particle_instance, *trail;
 float speed = 0;
 
 Remote *remote;
@@ -34,19 +34,25 @@ struct Player {
     Ink::Material* material;
     Ink::Mesh* mesh;
     float last_time;
+    float speed;
 };
 std::map<int, Player> other_plane;
-
-Ink::Mesh *plane_mesh;
 
 Ink::LightPass* light_pass = nullptr;
 Ink::BloomPass* bloom_pass = nullptr;
 Ink::ToneMapPass* tone_map_pass = nullptr;
 Ink::FXAAPass* fxaa_pass = nullptr;
-
 Ink::DirectionalLight* light;
-
 std::unordered_map<std::string, Ink::Image> images;
+
+/**
+ * get direction of a plane (Euler_order = YXZ, toward +Z)
+ * \param e euler angle
+ * \return normalized vec3 direction
+ */
+Vec3 direction_EYXZ_Z(Ink::Euler e){
+    return Vec3(sin(e.y) * cos(e.x), -sin(e.x), cos(e.y) * cos(e.x));
+}
 
 void conf(Settings& t) {
     t.title = "Ink3D Example";
@@ -156,7 +162,6 @@ void renderer_load() {
 }
 
 void load() {
-
     Ink::Shadow::init(4096, 4096, 4);
     Ink::Shadow::set_samples(16);
 
@@ -223,6 +228,31 @@ void load() {
     scene.set_material(particle_mat->name, particle_instance->mesh, particle_mat);
     scene.add(particle_instance);
 
+    // 拖尾
+    Ink::Material *trail_mat = new Ink::Material("trail_material");
+    trail_mat->emissive = Vec3(5, 5, 10);
+    trail = new Ink::ParticleInstance(
+            0.03,
+            [&](Ink::Particle &p){
+                p.lifetime = 4;
+                p.vers.push_back(Vec3(0, 0, 0));
+                p.vers.push_back(Vec3(rand() % 10, rand() % 10, rand() % 10) / 10);
+                p.vers.push_back(Vec3(rand() % 10, rand() % 10, rand() % 10) / 10);
+
+                p.direction = Vec3(rand() % 10 - 5, rand() % 10 - 5, rand() % 10 - 5).normalize();
+
+                p.position = plane->position
+                        - 2 * direction_EYXZ_Z(plane->rotation)
+                        + p.direction / 2;
+            },
+            [&](Ink::Particle &p, float dt){
+                p.position += p.direction * 7 * dt;
+            },
+            *trail_mat,
+            &renderer);
+    scene.set_material(trail_mat->name, trail->mesh, trail_mat);
+    scene.add(trail);
+
     viewer = Ink::MyViewer(Ink::PerspCamera(75 * Ink::DEG_TO_RAD, 1.77, 0.5, 2000), 30);
     viewer.set_position(Ink::Vec3(0, 0, -2));
 
@@ -233,8 +263,8 @@ void load() {
 
 void input_update(float dt){
     if(Ink::Window::is_down(SDLK_ESCAPE)){
-        Ink::Window::close();
         remote->logout();
+        Ink::Window::close();
         exit(0);
     }
 #ifdef FREE_FLY
@@ -274,14 +304,14 @@ void input_update(float dt){
 
 void kinetic_update(float dt){
 
-    float hr = plane->rotation.y;
-    float vr = plane->rotation.x;
-    Vec3 cur_direction = Vec3(sin(hr) * cos(vr), sin(-vr), cos(hr) * cos(vr)); //?
+    plane->position += direction_EYXZ_Z(plane->rotation) * speed * dt;
+    for(auto &[id, player] : other_plane){
+        // 接不到网络update时先模拟运动
+        player.instance->position += direction_EYXZ_Z(player.instance->rotation) * player.speed * dt;
+    }
 
-    plane->position += cur_direction * speed * dt;
     viewer.set_position(plane->position + viewer.get_camera().direction * 10);
     light->position = viewer.get_camera().position - light->direction * 200;
-    particle_instance->update(dt);
 
     if(speed > 20) speed -= dt * 7;
 #ifndef FREE_FLY
@@ -291,13 +321,15 @@ void kinetic_update(float dt){
 }
 
 void network_update(float dt){
-    remote->update(plane->position, Vec3(plane->rotation.x, plane->rotation.y, plane->rotation.z));
+    if(!remote->updated) return;
+
+    remote->updated = false;
+    remote->update(plane->position, Vec3(plane->rotation.x, plane->rotation.y, plane->rotation.z), speed);
     auto vec = remote->get_status();
 
     for(Status &st : vec){
         if(!other_plane.count(st.id)){
             // 生成新的plane，使用新mesh 和 新material
-            
             Player cur;
             cur.instance = Ink::Instance::create(str_format("plane_%d", st.id));
 
@@ -315,9 +347,11 @@ void network_update(float dt){
             scene.set_material(cur.material->name, cur.mesh, cur.material);
             other_plane[st.id] = cur;
         }
-        other_plane[st.id].instance->position = st.position;
-        other_plane[st.id].instance->rotation = Ink::Euler(st.rotation, Ink::EULER_YXZ);
-        other_plane[st.id].last_time = cur_time;
+        Player& cur = other_plane[st.id];
+        cur.speed = st.speed;
+        cur.instance->position = st.position;
+        cur.instance->rotation = Ink::Euler(st.rotation, Ink::EULER_YXZ);
+        cur.last_time = cur_time;
     }
 
     vector<int> to_del;
@@ -354,6 +388,12 @@ void update(float dt) {
     input_update(dt);
     kinetic_update(dt);
     network_update(dt);
+
+    // particle update
+    trail->emit_interval = 100.0f / std::max(1.0f, speed * speed);
+    trail->update(dt);
+    particle_instance->update(dt);
+
     viewer.update(dt);
 
     renderer_update(dt);

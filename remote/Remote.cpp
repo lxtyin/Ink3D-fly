@@ -14,14 +14,17 @@ void Remote::listen_thread() {
 
             auto msg_vec = fetch_message(revData);
             update_lock.lock();
-            for(Message &msg : msg_vec){
-                if(msg.type == "Boardcast") {
-                    players.clear();
-                    for(auto &st : fetch_status(msg.content)){
-                        if(st.id != local_id) players.emplace_back(st);
+            {
+                for(Message &msg : msg_vec){
+                    if(msg.type == "Boardcast") {
+                        players.clear();
+                        for(auto& st : fetch_status(msg.content)) {
+                            if(st.id != local_id) players.emplace_back(st);
+                        }
+                        updated = true;
+                    } else {
+                        std::cout << "Remote: unknow message: " << msg.content << std::endl;
                     }
-                } else {
-                    std::cout << "Remote: unknow message: " << msg.content << std::endl;
                 }
             }
             update_lock.unlock();
@@ -89,11 +92,13 @@ void Remote::logout() {
     send(s_client, str.c_str(), str.size(), 0);
 }
 
-void Remote::update(Vec3 position, Vec3 rotation) {
+void Remote::update(Vec3 position, Vec3 rotation, float speed) {
     Status st;
+    st.speed = speed;
     st.id = local_id;
     st.position = position;
     st.rotation = rotation;
+    st.time = cur_time;
     string str = "Update " + st.to_data() + ';';
     send(s_client, str.c_str(), str.size(), 0);
 }

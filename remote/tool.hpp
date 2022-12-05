@@ -6,6 +6,7 @@
 using Ink::Vec3;
 using std::string;
 using std::vector;
+#define cur_time ((float)clock() / CLOCKS_PER_SEC)
 
 template<typename... T>
 inline string str_format(const char* fmt, T... args) {
@@ -13,7 +14,6 @@ inline string str_format(const char* fmt, T... args) {
     sprintf(buf, fmt, args...);
     return buf;
 }
-
 
 inline int to_int(const string &str){
     int n = 0;
@@ -59,17 +59,19 @@ inline vector<Message> fetch_message(const string &data){
 
 struct Status {
     int id;
+    float time; //此状态时间戳，判断旧消息
+    float speed;
     Vec3 position;
     Vec3 rotation;
     Status() = default;
     Status(const string &data){
         std::stringstream ss(data);
-        ss >> id;
+        ss >> id >> speed >> time;
         ss >> position.x >> position.y >> position.z;
         ss >> rotation.x >> rotation.y >> rotation.z;
     }
     string to_data() const{
-        return str_format("%d %.3f %.3f %.3f %.3f %.3f %.3f", id,
+        return str_format("%d %.3f %.3f %.3f %.3f %.3f %.3f %.3f %.3f", id, speed, time,
                           position.x, position.y, position.z,
                           rotation.x, rotation.y, rotation.z);
     }
