@@ -21,11 +21,10 @@ Ink::Scene scene;
 Ink::MyViewer viewer;
 Ink::Renderer renderer;
 
-Ink::Instance *scene_obj;
 Ink::Instance *plane;
 Ink::Mesh *plane_mesh;
 Ink::Material *plane_material;
-Ink::ParticleInstance *particle_instance, *trail;
+Ink::ParticleInstance* snow_emitter, *trail;
 float speed = 0;
 
 Remote *remote;
@@ -172,18 +171,24 @@ void load() {
     plane_mesh = new Ink::Mesh(Ink::Loader::load_obj(M_PATH "Plane/plane.obj")[0]);
     plane_mesh->groups[0].name = "plane_material";
     plane_material = new Ink::Material("plane_material");
-//    plane_mesh->create_normals();
     plane_material->emissive = Vec3(0.5, 0.5, 0.5);
     plane->rotation.order = Ink::EULER_YXZ;
     plane->scale = Vec3(2, 2, 2);
+    plane->position = Vec3(30, 50, -50);
+    plane->rotation.y = 90;
 
     plane->mesh = plane_mesh;
     scene.add(plane);
     scene.set_material(plane_material->name, plane_mesh, plane_material);
 
 //    scene_obj = Ink::load_model(M_PATH "lakeside/lakeside_-_exterior_scene.glb", scene);
-    scene_obj = Ink::load_model(M_PATH "house/low_poly_winter_scene.glb", scene);
+    Ink::Instance *scene_obj = Ink::load_model(M_PATH "house/low_poly_winter_scene.glb", scene);
     scene_obj->scale = Vec3(15, 15, 15);
+    scene_obj->cast_shadow = false;
+
+    scene_obj = Ink::load_model(M_PATH "house/winter_country_house.glb", scene);
+    scene_obj->scale = Vec3(15, 15, 15);
+    scene_obj->position = Vec3(1500, 0, -50);
     scene_obj->cast_shadow = false;
 
     // 环境光
@@ -210,48 +215,51 @@ void load() {
     plight->position = Vec3(60, 40, -50);
     scene.add_light(plight);
 
-    // 粒子
-    Ink::Material *particle_mat = new Ink::Material("particle_material");
-    particle_mat->emissive = Vec3(2, 2, 2);
-    particle_instance = new Ink::ParticleInstance(
-            0.01,
-            [&](Ink::Particle &p){
-                p.lifetime = 30;
+    // 雪花粒子
+    Ink::Material *snow_mat = new Ink::Material("particle_material");
+    snow_mat->emissive = Vec3(1.5, 1.5, 1.5);
+    snow_mat->side = Ink::DOUBLE_SIDE;
+    snow_emitter = new Ink::ParticleInstance(
+            0.02,
+            [&](Ink::Particle &p, Ink::Instance* ref){
+                p.lifetime = 40;
                 p.vers.push_back(Vec3(0, 0, 0));
-                p.vers.push_back(Vec3(rand() % 10, rand() % 10, rand() % 10) / 5);
-                p.vers.push_back(Vec3(rand() % 10, rand() % 10, rand() % 10) / 5);
-                p.position = Vec3(rand() % 600 - 300, rand() % 20 + 130, rand() % 600 - 300);
+                p.vers.push_back(Vec3::random() * 2);
+                p.vers.push_back(Vec3::random() * 2);
+                p.position = Vec3(rand() % 600 - 300, rand() % 30 + 150, rand() % 600 - 300);
             },
             [&](Ink::Particle &p, float dt){
                 p.position -= Vec3(0, 8, 0) * dt;
             },
-            particle_mat->name,
-            &renderer);
-    scene.set_material(particle_mat->name, particle_instance->mesh, particle_mat);
-    scene.add(particle_instance);
+            snow_mat->name,
+                & renderer);
+    snow_emitter->position = Vec3(1500, 0, 0);
+    scene.set_material(snow_mat->name, snow_emitter->mesh, snow_mat);
+    scene.add(snow_emitter);
 
     // 拖尾
     Ink::Material *trail_mat = new Ink::Material("trail_material");
-    trail_mat->emissive = Vec3(5, 5, 10);
+    trail_mat->emissive = Vec3(2, 2, 4);
+    trail_mat->side = Ink::DOUBLE_SIDE;
     trail = new Ink::ParticleInstance(
-            0.03,
-            [&](Ink::Particle &p){
+            0.05,
+            [&](Ink::Particle &p, Ink::Instance *ref){
                 p.lifetime = 4;
                 p.vers.push_back(Vec3(0, 0, 0));
-                p.vers.push_back(Vec3(rand() % 10, rand() % 10, rand() % 10) / 10);
-                p.vers.push_back(Vec3(rand() % 10, rand() % 10, rand() % 10) / 10);
+                p.vers.push_back(Vec3::random());
+                p.vers.push_back(Vec3::random());
+                p.direction = Vec3::random();
 
-                p.direction = Vec3(rand() % 10 - 5, rand() % 10 - 5, rand() % 10 - 5).normalize();
-
-                p.position = plane->position
-                        - 2 * direction_EYXZ_Z(plane->rotation)
+                p.position = ref->position
+                        - 2 * direction_EYXZ_Z(ref->rotation)
                         + p.direction / 2;
             },
             [&](Ink::Particle &p, float dt){
-                p.position += p.direction * 7 * dt;
+                p.position += p.direction * 5 * dt;
             },
             trail_mat->name,
-            &renderer);
+            &renderer,
+            plane);
     scene.set_material(trail_mat->name, trail->mesh, trail_mat);
     scene.add(trail);
 
@@ -342,38 +350,39 @@ void network_update(float dt){
             renderer.load_mesh(cur.mesh);
 
             cur.material = new Ink::Material(str_format("plane_material%d", st.id));   //加名字以区分
-            cur.material->emissive = Vec3(rand() % 30, rand() % 30, rand() % 30) / 15; //随机颜色发光
+            cur.material->emissive = Vec3::random() + Vec3(1, 1, 1); //随机颜色发光
 
             cur.instance->mesh = cur.mesh;
             cur.instance->scale = plane->scale;
-
+            
             scene.add(cur.instance);
             scene.set_material(cur.material->name, cur.mesh, cur.material);
-            
-            // cur.trail_mat = new Ink::Material(str_format("trail_mat%d", st.id));
-            // cur.trail_mat->emissive = cur.material->emissive + Vec3(rand() % 10, rand() % 10, rand() % 10) / 10; //随机拖尾颜色偏差
-            // cur.trail = new Ink::ParticleInstance(
-            //     0.03,
-            //     [&](Ink::Particle& p) {
-            //         p.lifetime = 4;
-            //         p.vers.push_back(Vec3(0, 0, 0));
-            //         p.vers.push_back(Vec3(rand() % 10, rand() % 10, rand() % 10) / 10);
-            //         p.vers.push_back(Vec3(rand() % 10, rand() % 10, rand() % 10) / 10);
 
-            //         p.direction = Vec3(rand() % 10 - 5, rand() % 10 - 5, rand() % 10 - 5).normalize();
+            cur.trail_mat = new Ink::Material(str_format("trail_mat%d", st.id));
+            cur.trail_mat->emissive = cur.material->emissive + Vec3(1, 1, 0); //拖尾颜色偏差
+            cur.trail_mat->side = Ink::DOUBLE_SIDE;
+            cur.trail = new Ink::ParticleInstance(
+                 0.05,
+                 [&](Ink::Particle& p, Ink::Instance *ref) {
+                     p.lifetime = 4;
+                     p.vers.push_back(Vec3(0, 0, 0));
+                     p.vers.push_back(Vec3::random());
+                     p.vers.push_back(Vec3::random());
+                     p.direction = Vec3::random();
 
-            //         p.position = cur.instance->position
-            //             - 2 * direction_EYXZ_Z(cur.instance->rotation)
-            //             + p.direction / 2;
-            //     },
-            //     [&](Ink::Particle& p, float dt) {
-            //         p.position += p.direction * 7 * dt;
-            //     },
-            // cur.trail_mat->name,
-            // &renderer);
-            // scene.set_material(cur.trail_mat->name, cur.trail->mesh, cur.trail_mat);
-            // scene.add(cur.trail);
-            
+                     p.position = ref->position
+                         - 2 * direction_EYXZ_Z(ref->rotation)
+                         + p.direction / 2;
+                 },
+                 [&](Ink::Particle& p, float dt) {
+                     p.position += p.direction * 5 * dt;
+                 },
+             cur.trail_mat->name,
+             &renderer,
+             cur.instance);
+            scene.set_material(cur.trail_mat->name, cur.trail->mesh, cur.trail_mat);
+            scene.add(cur.trail);
+
             other_plane[st.id] = cur;
         }
 
@@ -426,11 +435,11 @@ void update(float dt) {
     // particle update
     trail->emit_interval = 100.0f / std::max(1.0f, speed * speed);
     trail->update(dt);
-    // for(auto& [id, player] : other_plane) {
-    //     player.trail->emit_interval = 100.0f / std::max(1.0f, player.speed * player.speed);
-    //     player.trail->update(dt);
-    // }
-    particle_instance->update(dt);
+    for(auto& [id, player] : other_plane) {
+        player.trail->emit_interval = 100.0f / std::max(1.0f, player.speed * player.speed);
+        player.trail->update(dt);
+    }
+    snow_emitter->update(dt);
 
     viewer.update(dt);
 

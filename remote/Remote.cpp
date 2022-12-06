@@ -26,7 +26,7 @@ void Remote::listen_thread() {
                     }
                     update_lock.unlock();
                 } else {
-                    std::cout << "Remote: unknow message: " << msg.content << std::endl;
+                    std::cout << "Remote: unknow message: " << revData << std::endl;
                 }
             }
         } else {

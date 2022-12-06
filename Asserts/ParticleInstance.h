@@ -29,11 +29,13 @@ namespace Ink{
         std::set<Particle*> all_particles;
         float cumulative_time = 0;
 
+        Instance *refer;        /** < refer instance */
+
         Mesh *compose_mesh;
         Renderer* renderer;
 
-        std::function<void(Particle&)> init_func;                     /**< initialize function for each particle */
-        std::function<void(Particle&, float dt)> update_func;         /**< update function for each particle */
+        std::function<void(Particle&, Instance*)> init_func;   /**< initialize function for each particle */
+        std::function<void(Particle&, float dt)> update_func;  /**< update function for each particle */
 
         /**
          * update all particles to mesh, so that render together.
@@ -58,10 +60,11 @@ namespace Ink{
          * \param groupname material name
          */
         explicit ParticleInstance(float interval,
-                                  const std::function<void(Particle&)> &init,
+                                  const std::function<void(Particle&, Instance*)> &init,
                                   const std::function<void(Particle&, float dt)> &upd,
                                   const string& groupname,
                                   Renderer* r,
+                                  Instance *ref = nullptr,
                                   const std::string& n = "");
     };
 }
