@@ -244,7 +244,7 @@ void load() {
     trail = new Ink::ParticleInstance(
             0.05,
             [&](Ink::Particle &p, Ink::Instance *ref){
-                p.lifetime = 4;
+                p.lifetime = rand() % 10 * 1.0 / 10 + 4;
                 p.vers.push_back(Vec3(0, 0, 0));
                 p.vers.push_back(Vec3::random());
                 p.vers.push_back(Vec3::random());
@@ -318,15 +318,17 @@ void input_update(float dt){
 void kinetic_update(float dt){
 
     plane->position += direction_EYXZ_Z(plane->rotation) * speed * dt;
-    for(auto &[id, player] : other_plane){
+    if(speed > 20) speed -= dt * 7;
+    
+    for(auto& [id, player] : other_plane) {
         // 接不到网络update时先模拟运动
         player.instance->position += direction_EYXZ_Z(player.instance->rotation) * player.speed * dt;
+        if(player.speed > 20) player.speed -= dt * 7;
     }
 
     viewer.set_position(plane->position + viewer.get_camera().direction * 10);
     light->position = viewer.get_camera().position - light->direction * 200;
 
-    if(speed > 20) speed -= dt * 7;
 #ifndef FREE_FLY
     plane->rotation.z *= 0.95;
     plane->rotation.x *= 0.95;
@@ -364,7 +366,7 @@ void network_update(float dt){
             cur.trail = new Ink::ParticleInstance(
                  0.05,
                  [&](Ink::Particle& p, Ink::Instance *ref) {
-                     p.lifetime = 4;
+                     p.lifetime = rand() % 10 * 1.0 / 10 + 4;
                      p.vers.push_back(Vec3(0, 0, 0));
                      p.vers.push_back(Vec3::random());
                      p.vers.push_back(Vec3::random());
@@ -394,8 +396,8 @@ void network_update(float dt){
     }
 
     vector<int> to_del;
-    for(auto &[id, player] : other_plane){ // 未更新的player
-        if(cur_time - player.last_update_time > 1){
+    for(auto &[id, player] : other_plane){ // 一段时间未收到更新的player
+        if(cur_time - player.last_update_time > 3){
             scene.remove_material(player.material->name, player.instance->mesh);
             scene.remove_material(player.trail_mat->name, player.trail->mesh);
             scene.remove(player.instance);
@@ -427,19 +429,22 @@ void renderer_update(float dt){
 #endif
 }
 
+void particle_update(float dt) {
+    // particle update
+    trail->emit_interval = speed > 90 ? 0.01 : speed > 80 ? 0.1 : 10;
+    trail->update(dt);
+    for(auto& [id, player] : other_plane) {
+        player.trail->emit_interval = player.speed > 90 ? 0.01 : player.speed > 80 ? 0.1 : 10;
+        player.trail->update(dt);
+    }
+    snow_emitter->update(dt);
+}
+
 void update(float dt) {
     input_update(dt);
     kinetic_update(dt);
     network_update(dt);
-
-    // particle update
-    trail->emit_interval = 100.0f / std::max(1.0f, speed * speed);
-    trail->update(dt);
-    for(auto& [id, player] : other_plane) {
-        player.trail->emit_interval = 100.0f / std::max(1.0f, player.speed * player.speed);
-        player.trail->update(dt);
-    }
-    snow_emitter->update(dt);
+    particle_update(dt);
 
     viewer.update(dt);
 

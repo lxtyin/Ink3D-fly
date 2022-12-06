@@ -71,7 +71,7 @@ struct Status {
         ss >> rotation.x >> rotation.y >> rotation.z;
     }
     string to_data() const{
-        return str_format("%d %.3f %.3f %.3f %.3f %.3f %.3f %.3f %.3f", id, speed, time,
+        return str_format("%d %.1f %.1f %.1f %.1f %.1f %.1f %.1f %.1f", id, speed, time,
                           position.x, position.y, position.z,
                           rotation.x, rotation.y, rotation.z);
     }

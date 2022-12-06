@@ -16,7 +16,7 @@ class Remote {
     int local_id;
     std::mutex update_lock;
     std::queue<Status> dirty_status;    /** < new received status, which has not be used.*/
-    std::map<int, float> latest_time;     /** < latest game time of each player, to avoid disorder. */
+    std::unordered_map<int, float> latest_time;     /** < latest game time of each player, to avoid disorder. */
 
     void listen_thread();
 public:
