@@ -1,5 +1,6 @@
 #include "../ink/utils/Mainloop.h"
 #include "../ink/utils/Viewer.h"
+#include "tool.hpp"
 #include "MyCamera.h"
 #include "expend.h"
 #include "ModelLoader.h"
@@ -12,7 +13,7 @@ using Ink::Vec3;
 #define VP_WIDTH 1440
 #define VP_HEIGHT 900
 #define REMOTE_IP "124.223.118.118"
-#define REMOTE_PORT 8888
+#define REMOTE_PORT 7777
 
 //#define FREE_FLY //fly method.
 #define USE_FORWARD_PATH 0
@@ -132,7 +133,7 @@ void renderer_load() {
 
     bloom_pass = new Ink::BloomPass(VP_WIDTH, VP_HEIGHT);
     bloom_pass->init();
-    bloom_pass->threshold = 0.2;
+    bloom_pass->threshold = 0.3;
     bloom_pass->radius = 0.5;
     bloom_pass->intensity = 1;
     bloom_pass->set_texture(post_map_0);
@@ -148,21 +149,27 @@ void renderer_load() {
     fxaa_pass->init();
     fxaa_pass->set_texture(post_map_0);
 #endif
-    images["Skybox_PX"] = Ink::Loader::load_image(P_PATH "sky_px.png");
-    images["Skybox_PY"] = Ink::Loader::load_image(P_PATH "sky_py.png");
-    images["Skybox_PZ"] = Ink::Loader::load_image(P_PATH "sky_pz.png");
-    images["Skybox_NX"] = Ink::Loader::load_image(P_PATH "sky_nx.png");
-    images["Skybox_NY"] = Ink::Loader::load_image(P_PATH "sky_ny.png");
-    images["Skybox_NZ"] = Ink::Loader::load_image(P_PATH "sky_nz.png");
+//    images["Skybox_PX"] = Ink::Loader::load_image(P_PATH "sky_px.png");
+//    images["Skybox_PY"] = Ink::Loader::load_image(P_PATH "sky_py.png");
+//    images["Skybox_PZ"] = Ink::Loader::load_image(P_PATH "sky_pz.png");
+//    images["Skybox_NX"] = Ink::Loader::load_image(P_PATH "sky_nx.png");
+//    images["Skybox_NY"] = Ink::Loader::load_image(P_PATH "sky_ny.png");
+//    images["Skybox_NZ"] = Ink::Loader::load_image(P_PATH "sky_nz.png");
+//    renderer.load_skybox(images["Skybox_PX"], images["Skybox_NX"],
+//                         images["Skybox_PY"], images["Skybox_NY"],
+//                         images["Skybox_PZ"], images["Skybox_NZ"]);
 
-    renderer.load_skybox(images["Skybox_PX"], images["Skybox_NX"],
-                         images["Skybox_PY"], images["Skybox_NY"],
-                         images["Skybox_PZ"], images["Skybox_NZ"]);
+    images["Skybox"] = Ink::Loader::load_image(P_PATH "the_sky_is_on_fire.png");
+    images["Skybox"].flip_vertical();
+    renderer.load_skybox(images["Skybox"]);
+
     renderer.load_scene(scene);
     renderer.set_viewport(Ink::Gpu::Rect(VP_WIDTH, VP_HEIGHT));
 }
 
 void load() {
+    remote = new Remote(REMOTE_IP, REMOTE_PORT);
+
     Ink::Shadow::init(4096, 4096, 4);
     Ink::Shadow::set_samples(16);
 
@@ -171,25 +178,49 @@ void load() {
     plane_mesh = new Ink::Mesh(Ink::Loader::load_obj(M_PATH "Plane/plane.obj")[0]);
     plane_mesh->groups[0].name = "plane_material";
     plane_material = new Ink::Material("plane_material");
-    plane_material->emissive = Vec3(0.5, 0.5, 0.5);
+    plane_material->emissive = hash_color(remote->local_id);
     plane->rotation.order = Ink::EULER_YXZ;
     plane->scale = Vec3(2, 2, 2);
     plane->position = Vec3(30, 50, -50);
-    plane->rotation.y = 90;
-
+    plane->rotation.y = M_PI_2;
     plane->mesh = plane_mesh;
     scene.add(plane);
     scene.set_material(plane_material->name, plane_mesh, plane_material);
 
-//    scene_obj = Ink::load_model(M_PATH "lakeside/lakeside_-_exterior_scene.glb", scene);
     Ink::Instance *scene_obj = Ink::load_model(M_PATH "house/low_poly_winter_scene.glb", scene);
     scene_obj->scale = Vec3(15, 15, 15);
+    scene_obj->position = Vec3(-300, 20, -300);
     scene_obj->cast_shadow = false;
 
     scene_obj = Ink::load_model(M_PATH "house/winter_country_house.glb", scene);
     scene_obj->scale = Vec3(15, 15, 15);
-    scene_obj->position = Vec3(1500, 0, -50);
+    scene_obj->position = Vec3(1500, 20, -50);
     scene_obj->cast_shadow = false;
+
+    Ink::Instance *ground = Ink::Instance::create();
+    auto *ground_mesh = new Ink::Mesh(Ink::Loader::load_obj(M_PATH "ground/ground.obj")[0]);
+    auto *ground_mat = new Ink::Material("ground_material");
+    ground_mat->side = Ink::DOUBLE_SIDE;
+    ground_mesh->groups[0].name = "ground_material";
+    ground->mesh = ground_mesh;
+    ground->scale = Vec3(100, 80, 100);
+    scene.add(ground);
+    scene.set_material(ground_mat->name, ground->mesh, ground_mat);
+
+    Ink::Instance *ground2 = Ink::Instance::create();
+    auto *ground2_mesh = new Ink::Mesh(Ink::Loader::load_obj(M_PATH "ground/ground.obj")[0]);
+    auto *ground2_mat = new Ink::Material("ground2_material");
+    ground2_mat->side = Ink::DOUBLE_SIDE;
+    ground2_mat->color = Vec3(0.9, 0.6, 0.5);
+    ground2_mesh->groups[0].name = "ground2_material";
+    ground2->mesh = ground2_mesh;
+    ground2->scale = Vec3(100, 80, 100);
+    ground2->rotation.y = 1 * Ink::DEG_TO_RAD;
+    ground2->position = Vec3(0, -1, 0);
+    scene.add(ground2);
+    scene.set_material(ground2_mat->name, ground2->mesh, ground2_mat);
+
+
 
     // 环境光
     Ink::HemisphereLight *hemlight = new Ink::HemisphereLight();
@@ -199,11 +230,11 @@ void load() {
 
     // 平行光（阴影）
     light = new Ink::DirectionalLight();
-	light->color = Ink::Vec3(0.3, 0.3, 0.3);
-	light->direction = Ink::Vec3(0, -1, -0.5f);
+	light->color = Ink::Vec3(0.6, 0.6, 0.6);
+	light->direction = Ink::Vec3(-1, -1, 0);
     light->cast_shadow = true;
     light->shadow.activate();
-    light->shadow.camera = Ink::OrthoCamera(-300, 300, -300, 300, 0.1, 2000);
+    light->shadow.camera = Ink::OrthoCamera(-600, 600, -600, 600, 0.1, 2000);
     light->shadow.bias = 0.005;
 	scene.add_light(light);
 
@@ -239,7 +270,7 @@ void load() {
 
     // 拖尾
     Ink::Material *trail_mat = new Ink::Material("trail_material");
-    trail_mat->emissive = Vec3(2, 2, 4);
+    trail_mat->emissive = plane_material->emissive + Vec3(1, 1, 0.5);
     trail_mat->side = Ink::DOUBLE_SIDE;
     trail = new Ink::ParticleInstance(
             0.05,
@@ -260,6 +291,7 @@ void load() {
             trail_mat->name,
             &renderer,
             plane);
+    trail->cast_shadow = false;
     scene.set_material(trail_mat->name, trail->mesh, trail_mat);
     scene.add(trail);
 
@@ -268,7 +300,52 @@ void load() {
 
     renderer_load();
 
-    remote = new Remote(REMOTE_IP, REMOTE_PORT);
+}
+
+Player create_player(int id){
+    // 生成新的plane，使用新mesh 和 新material 新trail
+    Player cur;
+    cur.instance = Ink::Instance::create(str_format("plane_%d", id));
+
+    cur.mesh = new Ink::Mesh(*plane->mesh);
+    cur.mesh->groups[0].name = str_format("plane_material%d", id);
+    renderer.load_mesh(cur.mesh);
+
+    cur.material = new Ink::Material(str_format("plane_material%d", id));   //加名字以区分
+    cur.material->emissive = hash_color(id);
+
+    cur.instance->mesh = cur.mesh;
+    cur.instance->scale = plane->scale;
+
+    scene.add(cur.instance);
+    scene.set_material(cur.material->name, cur.mesh, cur.material);
+
+    cur.trail_mat = new Ink::Material(str_format("trail_mat%d", id));
+    cur.trail_mat->emissive = cur.material->emissive + Vec3(1, 1, 0.5); //拖尾颜色偏差
+    cur.trail_mat->side = Ink::DOUBLE_SIDE;
+    cur.trail = new Ink::ParticleInstance(
+            0.05,
+            [&](Ink::Particle& p, Ink::Instance *ref) {
+                p.lifetime = rand() % 10 * 1.0 / 10 + 4;
+                p.vers.push_back(Vec3(0, 0, 0));
+                p.vers.push_back(Vec3::random());
+                p.vers.push_back(Vec3::random());
+                p.direction = Vec3::random();
+
+                p.position = ref->position
+                             - 2 * direction_EYXZ_Z(ref->rotation)
+                             + p.direction / 2;
+            },
+            [&](Ink::Particle& p, float dt) {
+                p.position += p.direction * 5 * dt;
+            },
+            cur.trail_mat->name,
+            &renderer,
+            cur.instance);
+    cur.trail->cast_shadow = false;
+    scene.set_material(cur.trail_mat->name, cur.trail->mesh, cur.trail_mat);
+    scene.add(cur.trail);
+    return cur;
 }
 
 void input_update(float dt){
@@ -312,6 +389,9 @@ void input_update(float dt){
     } else {
         viewer.set_fov(75 * Ink::DEG_TO_RAD);
     }
+    if(Ink::Window::is_down(SDLK_LSHIFT)){
+        speed *= 0.9;
+    }
 #endif
 }
 
@@ -343,49 +423,7 @@ void network_update(float dt){
         if(!st.id) break;
 
         if(!other_plane.count(st.id)) {
-            // 生成新的plane，使用新mesh 和 新material 新trail
-            Player cur;
-            cur.instance = Ink::Instance::create(str_format("plane_%d", st.id));
-
-            cur.mesh = new Ink::Mesh(*plane->mesh);
-            cur.mesh->groups[0].name = str_format("plane_material%d", st.id);
-            renderer.load_mesh(cur.mesh);
-
-            cur.material = new Ink::Material(str_format("plane_material%d", st.id));   //加名字以区分
-            cur.material->emissive = Vec3::random() + Vec3(1, 1, 1); //随机颜色发光
-
-            cur.instance->mesh = cur.mesh;
-            cur.instance->scale = plane->scale;
-            
-            scene.add(cur.instance);
-            scene.set_material(cur.material->name, cur.mesh, cur.material);
-
-            cur.trail_mat = new Ink::Material(str_format("trail_mat%d", st.id));
-            cur.trail_mat->emissive = cur.material->emissive + Vec3(1, 1, 0); //拖尾颜色偏差
-            cur.trail_mat->side = Ink::DOUBLE_SIDE;
-            cur.trail = new Ink::ParticleInstance(
-                 0.05,
-                 [&](Ink::Particle& p, Ink::Instance *ref) {
-                     p.lifetime = rand() % 10 * 1.0 / 10 + 4;
-                     p.vers.push_back(Vec3(0, 0, 0));
-                     p.vers.push_back(Vec3::random());
-                     p.vers.push_back(Vec3::random());
-                     p.direction = Vec3::random();
-
-                     p.position = ref->position
-                         - 2 * direction_EYXZ_Z(ref->rotation)
-                         + p.direction / 2;
-                 },
-                 [&](Ink::Particle& p, float dt) {
-                     p.position += p.direction * 5 * dt;
-                 },
-             cur.trail_mat->name,
-             &renderer,
-             cur.instance);
-            scene.set_material(cur.trail_mat->name, cur.trail->mesh, cur.trail_mat);
-            scene.add(cur.trail);
-
-            other_plane[st.id] = cur;
+            other_plane[st.id] = create_player(st.id);
         }
 
         Player& cur = other_plane[st.id];

@@ -6,9 +6,8 @@
 #include <thread>
 
 void Remote::listen_thread() {
-    char revData[2048];
     while(true){
-        int ret = recv(s_client, revData, 2048, 0);
+        int ret = recv(s_client, revData, 20480, 0);
         if(ret != SOCKET_ERROR) {
             revData[ret] = 0x00;
 
@@ -64,8 +63,7 @@ Remote::Remote(const string &ip, int hton) {
     }
 
     // 接收一个id
-    char revData[255];
-    int ret = recv(s_client, revData, 255, 0);
+    int ret = recv(s_client, revData, 20480, 0);
     if(ret > 0) {
         revData[ret] = 0x00;
         Message msg = fetch_message(revData)[0];

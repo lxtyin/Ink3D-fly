@@ -12,14 +12,16 @@
 #pragma comment(lib,"ws2_32.lib")
 
 class Remote {
+    char revData[20480];
     SOCKET s_client;
-    int local_id;
     std::mutex update_lock;
     std::queue<Status> dirty_status;    /** < new received status, which has not be used.*/
     std::unordered_map<int, float> latest_time;     /** < latest game time of each player, to avoid disorder. */
 
     void listen_thread();
 public:
+
+    int local_id;
 
     /**
      * construct and link.

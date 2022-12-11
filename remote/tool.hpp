@@ -3,6 +3,7 @@
 #include <bits/stdc++.h>
 #include <cstdarg>
 #include "../ink/math/Vector3.h"
+#include "../ink/math/Random.h"
 using Ink::Vec3;
 using std::string;
 using std::vector;
@@ -21,6 +22,15 @@ inline int to_int(const string &str){
         n = n * 10 + (c - '0');
     }
     return n;
+}
+
+inline Vec3 hash_color(int id){
+    Ink::Random::set_seed(id);
+    Vec3 res = Vec3::random();
+    res.x = abs(res.x);
+    res.y = abs(res.y);
+    res.z = abs(res.z);
+    return res;
 }
 
 struct Message {
