@@ -6,25 +6,28 @@
 #include <thread>
 
 void Remote::listen_thread() {
-    char revData[2048];
     while(true){
-        int ret = recv(s_client, revData, 2048, 0);
+        int ret = recv(s_client, revData, 20480, 0);
         if(ret != SOCKET_ERROR) {
             revData[ret] = 0x00;
 
             auto msg_vec = fetch_message(revData);
-            update_lock.lock();
             for(Message &msg : msg_vec){
                 if(msg.type == "Boardcast") {
-                    players.clear();
-                    for(auto &st : fetch_status(msg.content)){
-                        if(st.id != local_id) players.emplace_back(st);
+                    update_lock.lock();
+                    {
+                        for(auto& st : fetch_status(msg.content)) {
+                            if(st.id != local_id && st.time > latest_time[st.id]){
+                                latest_time[st.id] = st.time;
+                                dirty_status.push(st);
+                            }
+                        }
                     }
+                    update_lock.unlock();
                 } else {
-                    std::cout << "Remote: unknow message: " << msg.content << std::endl;
+                    std::cout << "Remote: unknow message: " << revData << std::endl;
                 }
             }
-            update_lock.unlock();
         } else {
             std::cout << "Remote: server error" << std::endl;
             return;
@@ -60,8 +63,7 @@ Remote::Remote(const string &ip, int hton) {
     }
 
     // 接收一个id
-    char revData[255];
-    int ret = recv(s_client, revData, 255, 0);
+    int ret = recv(s_client, revData, 20480, 0);
     if(ret > 0) {
         revData[ret] = 0x00;
         Message msg = fetch_message(revData)[0];
@@ -79,8 +81,19 @@ Remote::Remote(const string &ip, int hton) {
     s_client = -1;
 }
 
-vector<Status> Remote::get_status() {
-    return players; //copy.
+Status Remote::get_status() {
+    Status res;
+    update_lock.lock();
+    {
+        if(dirty_status.empty()){
+            res.id = 0;
+        } else {
+            res = dirty_status.front();
+            dirty_status.pop();
+        }
+    }
+    update_lock.unlock();
+    return res;
 }
 
 void Remote::logout() {
@@ -89,11 +102,13 @@ void Remote::logout() {
     send(s_client, str.c_str(), str.size(), 0);
 }
 
-void Remote::update(Vec3 position, Vec3 rotation) {
+void Remote::update(Vec3 position, Vec3 rotation, float speed) {
     Status st;
+    st.speed = speed;
     st.id = local_id;
     st.position = position;
     st.rotation = rotation;
+    st.time = cur_time;
     string str = "Update " + st.to_data() + ';';
     send(s_client, str.c_str(), str.size(), 0);
 }

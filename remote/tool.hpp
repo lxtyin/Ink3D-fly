@@ -3,9 +3,11 @@
 #include <bits/stdc++.h>
 #include <cstdarg>
 #include "../ink/math/Vector3.h"
+#include "../ink/math/Random.h"
 using Ink::Vec3;
 using std::string;
 using std::vector;
+#define cur_time ((float)clock() / CLOCKS_PER_SEC)
 
 template<typename... T>
 inline string str_format(const char* fmt, T... args) {
@@ -14,13 +16,21 @@ inline string str_format(const char* fmt, T... args) {
     return buf;
 }
 
-
 inline int to_int(const string &str){
     int n = 0;
     for(char c: str){
         n = n * 10 + (c - '0');
     }
     return n;
+}
+
+inline Vec3 hash_color(int id){
+    Ink::Random::set_seed(id);
+    Vec3 res = Vec3::random();
+    res.x = abs(res.x);
+    res.y = abs(res.y);
+    res.z = abs(res.z);
+    return res;
 }
 
 struct Message {
@@ -59,17 +69,19 @@ inline vector<Message> fetch_message(const string &data){
 
 struct Status {
     int id;
+    float speed;
+    float time; //此状态时间戳，判断旧消息
     Vec3 position;
     Vec3 rotation;
     Status() = default;
     Status(const string &data){
         std::stringstream ss(data);
-        ss >> id;
+        ss >> id >> speed >> time;
         ss >> position.x >> position.y >> position.z;
         ss >> rotation.x >> rotation.y >> rotation.z;
     }
     string to_data() const{
-        return str_format("%d %.3f %.3f %.3f %.3f %.3f %.3f", id,
+        return str_format("%d %.1f %.1f %.1f %.1f %.1f %.1f %.1f %.1f", id, speed, time,
                           position.x, position.y, position.z,
                           rotation.x, rotation.y, rotation.z);
     }

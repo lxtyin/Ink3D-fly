@@ -39,7 +39,7 @@ namespace Ink {
          * \param c camera
          * \param s moving speed
          */
-        explicit MyViewer(const Camera& c = Camera(), float s = 1);
+        explicit MyViewer(const PerspCamera& c = PerspCamera(), float s = 1);
 
         /**
          * Updates the viewing camera. This function should be called every frame.
@@ -47,6 +47,12 @@ namespace Ink {
          * \param dt delta time
          */
         void update(float dt);
+
+        /**
+         * set camera fov.
+         * \param fov
+         */
+        void set_fov(float fov);
 
         /**
          * Update axis_y by force.
@@ -67,14 +73,6 @@ namespace Ink {
         const Camera& get_camera() const;
 
         /**
-         * Sets the specified viewing camera. All the parameters of camera will be
-         * updated.
-         *
-         * \param c camera
-         */
-        void set_camera(const Camera& c);
-
-        /**
          * Sets the specified position parameter of viewing camera.
          *
          * \param p position
@@ -88,12 +86,14 @@ namespace Ink {
          */
         void set_direction(const Vec3& d);
 
-        Camera camera;
+        PerspCamera camera;
     private:
         float axis_y = 0;
         float axis_z = 0;
         float late_axis_y = 0;
         float late_axis_z = 0;
+
+        float lead_fov;
     };
 
 }

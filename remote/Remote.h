@@ -12,23 +12,42 @@
 #pragma comment(lib,"ws2_32.lib")
 
 class Remote {
+    char revData[20480];
     SOCKET s_client;
-    int local_id;
     std::mutex update_lock;
-    vector<Status> players;  /** < id : player_status, will be automatically maintained.*/
+    std::queue<Status> dirty_status;    /** < new received status, which has not be used.*/
+    std::unordered_map<int, float> latest_time;     /** < latest game time of each player, to avoid disorder. */
 
     void listen_thread();
-
 public:
 
+    int local_id;
+
+    /**
+     * construct and link.
+     * \param ip
+     * \param hton
+     */
     Remote(const string &ip, int hton);
 
-    vector<Status> get_status();
+    /**
+     * pop one status from dirty status.
+     * \return if empty, return Status.id = 0.
+     */
+    Status get_status();
 
-    void update(Vec3 position, Vec3 rotation);
+    /**
+     * send Status to remote server.
+     * \param position
+     * \param rotation
+     * \param speed
+     */
+    void update(Vec3 position, Vec3 rotation, float speed);
 
+    /**
+     * send logout information.
+     */
     void logout();
 };
-
 
 #endif //INK3D_REMOTE_H

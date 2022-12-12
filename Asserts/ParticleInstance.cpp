@@ -4,20 +4,22 @@
 
 #include "ParticleInstance.h"
 
-namespace Ink{
+namespace Ink {
 
     ParticleInstance::ParticleInstance(float interval,
-                                       const std::function<void(Particle&)> &init,
+                                       const std::function<void(Particle&, Instance*)> &init,
                                        const std::function<void(Particle&, float dt)> &upd,
-                                       const Material &material,
+                                       const string &groupname,
                                        Renderer *r,
+                                       Instance *ref,
                                        const std::string& n) : Instance(n){
         emit_interval = interval;
         init_func = init;
         update_func = upd;
         renderer = r;
+        refer = ref;
         mesh = compose_mesh = new Mesh;
-        compose_mesh->groups.push_back({material.name, 0, 0});
+        compose_mesh->groups.push_back({groupname, 0, 0});
         update_mesh();
         compose_mesh->create_normals(); //初始建立法线
     }
@@ -37,7 +39,7 @@ namespace Ink{
         while(cumulative_time > emit_interval){
             cumulative_time -= emit_interval;
             Particle *nw = new Particle;
-            init_func(*nw);
+            init_func(*nw, refer);
             all_particles.insert(nw);
         }
         std::vector<Particle*> to_del;
