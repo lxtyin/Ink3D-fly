@@ -47,8 +47,8 @@ namespace Ink {
         float dty = axis_y - late_axis_y, dtz = axis_z - late_axis_z;
 //        dty = dty - floor((dty + PI_2) / PI) * PI;
 //        dtz = dtz - floor((dtz + PI_2) / PI) * PI;
-        late_axis_y += std::clamp(dty * 0.2f, -0.2f, 0.2f);
-        late_axis_z += std::clamp(dtz * 0.2f, -0.2f, 0.2f);
+        late_axis_y += std::clamp(dty * 0.3f, -0.3f, 0.3f);
+        late_axis_z += std::clamp(dtz * 0.3f, -0.3f, 0.3f);
 
         /* fov back */
         float dtfov = lead_fov - camera.fov_y;

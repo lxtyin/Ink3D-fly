@@ -34,3 +34,7 @@ Windows，安装有Cmake，Git
 ![1](http://lxtyin.ac.cn/img/Ink3D_fly/1.png)
 
 ![1](http://lxtyin.ac.cn/img/Ink3D_fly/3.png)
+
+![1](http://lxtyin.ac.cn/img/Ink3D_fly/4.png)
+
+![1](http://lxtyin.ac.cn/img/Ink3D_fly/5.png)

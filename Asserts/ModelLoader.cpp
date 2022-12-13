@@ -57,6 +57,12 @@ namespace Ink{
             mat->GetTexture(aiTextureType_DIFFUSE, i, &str);
             result->color_map = processImage(str.C_Str(), scene);
         }
+        for(int i = 0;i < mat->GetTextureCount(aiTextureType_NORMALS);i++){
+            aiString str;
+            mat->GetTexture(aiTextureType_NORMALS, i, &str);
+            result->normal_map = processImage(str.C_Str(), scene);
+        }
+
         return result;
     }
 
