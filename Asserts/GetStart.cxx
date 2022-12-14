@@ -207,8 +207,8 @@ void load() {
     scene_obj->position = Vec3(1756, 313, 204);
 
     // 地板
-//    Ink::Instance *ground = Ink::load_model(M_PATH "ground/terrain.glb", scene);
-//    ground->scale = Vec3(5500, 5500, 5500);
+    Ink::Instance *ground = Ink::load_model(M_PATH "ground/terrain.glb", scene);
+    ground->scale = Vec3(5500, 5500, 5500);
 
     // 环境光
     Ink::HemisphereLight *hemlight = new Ink::HemisphereLight();
@@ -245,14 +245,13 @@ void load() {
                 p.vers.push_back(Vec3(0, 0, 0));
                 p.vers.push_back(Vec3::random() * 2);
                 p.vers.push_back(Vec3::random() * 2);
-                p.position = Vec3(rand() % 800 - 400, rand() % 150, rand() % 800 - 400);
+                p.position = plane->position + Vec3(rand() % 800 - 400, rand() % 150, rand() % 800 - 400);
             },
             [&](Ink::Particle &p, float dt){
                 p.position -= Vec3(0, 8, 0) * dt;
             },
             snow_mat->name,
                 & renderer);
-    snow_emitter->position = scene_obj->position + Vec3(30, 30, 30);
     scene.set_material(snow_mat->name, snow_emitter->mesh, snow_mat);
     scene.add(snow_emitter);
 
