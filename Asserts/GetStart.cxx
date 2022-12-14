@@ -14,8 +14,8 @@ using Ink::Vec3;
 #define VP_HEIGHT 900
 #define REMOTE_IP "124.223.118.118"
 #define REMOTE_PORT 7777
+#define MULTI_PLAYER
 
-//#define FREE_FLY //fly method.
 #define USE_FORWARD_PATH 0
 
 Ink::Scene scene;
@@ -27,6 +27,7 @@ Ink::Mesh *plane_mesh;
 Ink::Material *plane_material;
 Ink::ParticleInstance* snow_emitter, *trail;
 float speed = 0;
+float view_dis = 10;
 
 Remote *remote;
 struct Player {
@@ -66,6 +67,7 @@ void conf(Settings& t) {
     t.fps = 120;
     t.background_color = Ink::Vec3(1, 0.93, 0.8);
 }
+
 void renderer_load() {
 #if USE_FORWARD_PATH
     renderer.set_rendering_mode(Ink::FORWARD_RENDERING);
@@ -133,7 +135,7 @@ void renderer_load() {
 
     bloom_pass = new Ink::BloomPass(VP_WIDTH, VP_HEIGHT);
     bloom_pass->init();
-    bloom_pass->threshold = 0.3;
+    bloom_pass->threshold = 0.4;
     bloom_pass->radius = 0.5;
     bloom_pass->intensity = 1;
     bloom_pass->set_texture(post_map_0);
@@ -149,26 +151,29 @@ void renderer_load() {
     fxaa_pass->init();
     fxaa_pass->set_texture(post_map_0);
 #endif
-//    images["Skybox_PX"] = Ink::Loader::load_image(P_PATH "sky_px.png");
-//    images["Skybox_PY"] = Ink::Loader::load_image(P_PATH "sky_py.png");
-//    images["Skybox_PZ"] = Ink::Loader::load_image(P_PATH "sky_pz.png");
-//    images["Skybox_NX"] = Ink::Loader::load_image(P_PATH "sky_nx.png");
-//    images["Skybox_NY"] = Ink::Loader::load_image(P_PATH "sky_ny.png");
-//    images["Skybox_NZ"] = Ink::Loader::load_image(P_PATH "sky_nz.png");
-//    renderer.load_skybox(images["Skybox_PX"], images["Skybox_NX"],
-//                         images["Skybox_PY"], images["Skybox_NY"],
-//                         images["Skybox_PZ"], images["Skybox_NZ"]);
+    images["Skybox_PX"] = Ink::Loader::load_image(P_PATH "sky_px.png");
+    images["Skybox_PY"] = Ink::Loader::load_image(P_PATH "sky_py.png");
+    images["Skybox_PZ"] = Ink::Loader::load_image(P_PATH "sky_pz.png");
+    images["Skybox_NX"] = Ink::Loader::load_image(P_PATH "sky_nx.png");
+    images["Skybox_NY"] = Ink::Loader::load_image(P_PATH "sky_ny.png");
+    images["Skybox_NZ"] = Ink::Loader::load_image(P_PATH "sky_nz.png");
+    renderer.load_skybox(images["Skybox_PX"], images["Skybox_NX"],
+                         images["Skybox_PY"], images["Skybox_NY"],
+                         images["Skybox_PZ"], images["Skybox_NZ"]);
 
-    images["Skybox"] = Ink::Loader::load_image(P_PATH "the_sky_is_on_fire.png");
-    images["Skybox"].flip_vertical();
-    renderer.load_skybox(images["Skybox"]);
+//    images["Skybox"] = Ink::Loader::load_image(P_PATH "the_sky_is_on_fire.png");
+//    images["Skybox"].flip_vertical();
+//    renderer.load_skybox(images["Skybox"]);
 
     renderer.load_scene(scene);
     renderer.set_viewport(Ink::Gpu::Rect(VP_WIDTH, VP_HEIGHT));
 }
 
 void load() {
+
+#ifdef MULTI_PLAYER
     remote = new Remote(REMOTE_IP, REMOTE_PORT);
+#endif
 
     Ink::Shadow::init(4096, 4096, 4);
     Ink::Shadow::set_samples(16);
@@ -178,60 +183,43 @@ void load() {
     plane_mesh = new Ink::Mesh(Ink::Loader::load_obj(M_PATH "Plane/plane.obj")[0]);
     plane_mesh->groups[0].name = "plane_material";
     plane_material = new Ink::Material("plane_material");
+#ifdef MULTI_PLAYER
     plane_material->emissive = hash_color(remote->local_id);
+#else
+    plane_material->emissive = Vec3(0.6, 0.6, 0.6);
+#endif
     plane->rotation.order = Ink::EULER_YXZ;
-    plane->scale = Vec3(2, 2, 2);
-    plane->position = Vec3(30, 50, -50);
     plane->rotation.y = M_PI_2;
     plane->mesh = plane_mesh;
+    plane->scale = Vec3(2, 2, 2);
+    plane->position = Vec3(210, 254, -351);
     scene.add(plane);
     scene.set_material(plane_material->name, plane_mesh, plane_material);
 
+    // 房子1
     Ink::Instance *scene_obj = Ink::load_model(M_PATH "house/low_poly_winter_scene.glb", scene);
     scene_obj->scale = Vec3(15, 15, 15);
-    scene_obj->position = Vec3(-300, 20, -300);
-    scene_obj->cast_shadow = false;
+    scene_obj->position = Vec3(185, 204, -301);
 
+    // 房子2
     scene_obj = Ink::load_model(M_PATH "house/winter_country_house.glb", scene);
     scene_obj->scale = Vec3(15, 15, 15);
-    scene_obj->position = Vec3(1500, 20, -50);
-    scene_obj->cast_shadow = false;
+    scene_obj->position = Vec3(1756, 313, 204);
 
-    Ink::Instance *ground = Ink::Instance::create();
-    auto *ground_mesh = new Ink::Mesh(Ink::Loader::load_obj(M_PATH "ground/ground.obj")[0]);
-    auto *ground_mat = new Ink::Material("ground_material");
-    ground_mat->side = Ink::DOUBLE_SIDE;
-    ground_mesh->groups[0].name = "ground_material";
-    ground->mesh = ground_mesh;
-    ground->scale = Vec3(100, 80, 100);
-    scene.add(ground);
-    scene.set_material(ground_mat->name, ground->mesh, ground_mat);
-
-    Ink::Instance *ground2 = Ink::Instance::create();
-    auto *ground2_mesh = new Ink::Mesh(Ink::Loader::load_obj(M_PATH "ground/ground.obj")[0]);
-    auto *ground2_mat = new Ink::Material("ground2_material");
-    ground2_mat->side = Ink::DOUBLE_SIDE;
-    ground2_mat->color = Vec3(0.9, 0.6, 0.5);
-    ground2_mesh->groups[0].name = "ground2_material";
-    ground2->mesh = ground2_mesh;
-    ground2->scale = Vec3(100, 80, 100);
-    ground2->rotation.y = 1 * Ink::DEG_TO_RAD;
-    ground2->position = Vec3(0, -1, 0);
-    scene.add(ground2);
-    scene.set_material(ground2_mat->name, ground2->mesh, ground2_mat);
-
-
+    // 地板
+    Ink::Instance *ground = Ink::load_model(M_PATH "ground/terrain.glb", scene);
+    ground->scale = Vec3(5500, 5500, 5500);
 
     // 环境光
     Ink::HemisphereLight *hemlight = new Ink::HemisphereLight();
     hemlight->ground_color = Ink::Vec3(1, 1, 1);
-    hemlight->intensity = 0.2;
+    hemlight->intensity = 0.1;
     scene.add_light(hemlight);
 
     // 平行光（阴影）
     light = new Ink::DirectionalLight();
-	light->color = Ink::Vec3(0.6, 0.6, 0.6);
-	light->direction = Ink::Vec3(-1, -1, 0);
+	light->color = Ink::Vec3(0.7, 0.7, 0.6);
+	light->direction = Ink::Vec3(-0.6, -1, 0);
     light->cast_shadow = true;
     light->shadow.activate();
     light->shadow.camera = Ink::OrthoCamera(-600, 600, -600, 600, 0.1, 2000);
@@ -242,8 +230,8 @@ void load() {
     Ink::PointLight *plight = new Ink::PointLight();
     plight->color = Ink::Vec3(0.5, 0.5, 1);
     plight->intensity = 1.5;
-    plight->distance = 60;
-    plight->position = Vec3(60, 40, -50);
+    plight->distance = 100;
+    plight->position = Vec3(230, 224, -351);
     scene.add_light(plight);
 
     // 雪花粒子
@@ -251,24 +239,23 @@ void load() {
     snow_mat->emissive = Vec3(1.5, 1.5, 1.5);
     snow_mat->side = Ink::DOUBLE_SIDE;
     snow_emitter = new Ink::ParticleInstance(
-            0.02,
+            0.01,
             [&](Ink::Particle &p, Ink::Instance* ref){
-                p.lifetime = 40;
+                p.lifetime = 30;
                 p.vers.push_back(Vec3(0, 0, 0));
                 p.vers.push_back(Vec3::random() * 2);
                 p.vers.push_back(Vec3::random() * 2);
-                p.position = Vec3(rand() % 600 - 300, rand() % 30 + 150, rand() % 600 - 300);
+                p.position = plane->position + Vec3(rand() % 800 - 400, rand() % 150, rand() % 800 - 400);
             },
             [&](Ink::Particle &p, float dt){
                 p.position -= Vec3(0, 8, 0) * dt;
             },
             snow_mat->name,
                 & renderer);
-    snow_emitter->position = Vec3(1500, 0, 0);
     scene.set_material(snow_mat->name, snow_emitter->mesh, snow_mat);
     scene.add(snow_emitter);
 
-    // 拖尾
+    // 自身拖尾（虚化
     Ink::Material *trail_mat = new Ink::Material("trail_material");
     trail_mat->emissive = plane_material->emissive + Vec3(1, 1, 0.5);
     trail_mat->side = Ink::DOUBLE_SIDE;
@@ -295,11 +282,10 @@ void load() {
     scene.set_material(trail_mat->name, trail->mesh, trail_mat);
     scene.add(trail);
 
-    viewer = Ink::MyViewer(Ink::PerspCamera(75 * Ink::DEG_TO_RAD, 1.77, 0.5, 2000), 30);
+    viewer = Ink::MyViewer(Ink::PerspCamera(75 * Ink::DEG_TO_RAD, 1.77, 0.5, 20000), 30);
     viewer.set_position(Ink::Vec3(0, 0, -2));
 
     renderer_load();
-
 }
 
 Player create_player(int id){
@@ -350,25 +336,13 @@ Player create_player(int id){
 
 void input_update(float dt){
     if(Ink::Window::is_down(SDLK_ESCAPE)){
-        remote->logout();
+        if(remote) remote->logout();
         Ink::Window::close();
         exit(0);
     }
-#ifdef FREE_FLY
-    if(Ink::Window::is_down(SDLK_a)) horizontal_box->rotation.y += dt;
-    if(Ink::Window::is_down(SDLK_d)) horizontal_box->rotation.y -= dt;
-    if(Ink::Window::is_down(SDLK_w)) vertical_box->rotation.x -= dt;
-    if(Ink::Window::is_down(SDLK_s)) vertical_box->rotation.x += dt;
-    if(Ink::Window::is_down(SDLK_e)) plane->rotation.z += dt;
-    if(Ink::Window::is_down(SDLK_q)) plane->rotation.z -= dt;
-    if(Ink::Window::is_down(SDLK_SPACE)) {
-        float hr = horizontal_box->rotation.y;
-        float vr = vertical_box->rotation.x;
-        Vec3 cur_direction = Vec3(sin(hr) * cos(vr), sin(-vr), cos(hr) * cos(vr)); //?
-
-        horizontal_box->position += cur_direction * 5 * dt;
+    if(Ink::Window::is_down(SDLK_p)){
+        std::cout << "Position: " << plane->position.x << ' ' << plane->position.y << ' ' << plane->position.z << '\n';
     }
-#else
     if(Ink::Window::is_down(SDLK_a)){
         plane->rotation.y += dt;
         plane->rotation.z -= dt;
@@ -392,21 +366,20 @@ void input_update(float dt){
     if(Ink::Window::is_down(SDLK_LSHIFT)){
         speed *= 0.9;
     }
-#endif
 }
 
 void kinetic_update(float dt){
 
     plane->position += direction_EYXZ_Z(plane->rotation) * speed * dt;
-    if(speed > 20) speed -= dt * 7;
+    if(speed > 30) speed -= dt * 6;
     
     for(auto& [id, player] : other_plane) {
         // 接不到网络update时先模拟运动
         player.instance->position += direction_EYXZ_Z(player.instance->rotation) * player.speed * dt;
-        if(player.speed > 20) player.speed -= dt * 7;
+        if(player.speed > 30) player.speed -= dt * 6;
     }
 
-    viewer.set_position(plane->position + viewer.get_camera().direction * 10);
+    viewer.set_position(plane->position + viewer.get_camera().direction * view_dis);
     light->position = viewer.get_camera().position - light->direction * 200;
 
 #ifndef FREE_FLY
@@ -416,7 +389,6 @@ void kinetic_update(float dt){
 }
 
 void network_update(float dt){
-
     remote->update(plane->position, Vec3(plane->rotation.x, plane->rotation.y, plane->rotation.z), speed);
     while(true){
         Status st = remote->get_status();
@@ -479,9 +451,12 @@ void particle_update(float dt) {
 }
 
 void update(float dt) {
+
+#ifdef MULTI_PLAYER
+    network_update(dt);
+#endif
     input_update(dt);
     kinetic_update(dt);
-    network_update(dt);
     particle_update(dt);
 
     viewer.update(dt);
