@@ -10,11 +10,12 @@ using Ink::Vec3;
 
 #define M_PATH "Asserts/models/"
 #define P_PATH "Asserts/images/"
-#define VP_WIDTH 1440
-#define VP_HEIGHT 900
-#define REMOTE_IP "124.223.118.118"
-#define REMOTE_PORT 7777
-#define MULTI_PLAYER
+
+int VP_WIDTH = 1440;
+int VP_HEIGHT = 900;
+string REMOTE_IP = "127.0.0.1";
+int REMOTE_PORT = 7777;
+bool MULTI_PLAYER = false;
 
 #define USE_FORWARD_PATH 0
 
@@ -57,7 +58,22 @@ Vec3 direction_EYXZ_Z(Ink::Euler e){
     return Vec3(sin(e.y) * cos(e.x), -sin(e.x), cos(e.y) * cos(e.x));
 }
 
+void get_config_txt(){
+    std::ifstream fin("config.txt");
+    if(!fin) return;
+    string name;
+    while(fin >> name){
+        if(name == "REMOTE_IP") fin >> REMOTE_IP;
+        if(name == "REMOTE_PORT") fin >> REMOTE_PORT;
+        if(name == "VP_WIDTH") fin >> VP_WIDTH;
+        if(name == "VP_HEIGHT") fin >> VP_HEIGHT;
+        if(name == "MULTI_PLAYER") fin >> MULTI_PLAYER;
+    }
+    fin.close();
+}
+
 void conf(Settings& t) {
+    get_config_txt();
     t.title = "Ink3D Example";
     t.width = VP_WIDTH;
     t.height = VP_HEIGHT;
@@ -171,9 +187,7 @@ void renderer_load() {
 
 void load() {
 
-#ifdef MULTI_PLAYER
-    remote = new Remote(REMOTE_IP, REMOTE_PORT);
-#endif
+    if(MULTI_PLAYER) remote = new Remote(REMOTE_IP, REMOTE_PORT);
 
     Ink::Shadow::init(4096, 4096, 4);
     Ink::Shadow::set_samples(16);
@@ -183,11 +197,8 @@ void load() {
     plane_mesh = new Ink::Mesh(Ink::Loader::load_obj(M_PATH "Plane/plane.obj")[0]);
     plane_mesh->groups[0].name = "plane_material";
     plane_material = new Ink::Material("plane_material");
-#ifdef MULTI_PLAYER
-    plane_material->emissive = hash_color(remote->local_id);
-#else
-    plane_material->emissive = Vec3(0.6, 0.6, 0.6);
-#endif
+    if(MULTI_PLAYER) plane_material->emissive = hash_color(remote->local_id);
+    else plane_material->emissive = Vec3(0.6, 0.6, 0.6);
     plane->rotation.order = Ink::EULER_YXZ;
     plane->rotation.y = M_PI_2;
     plane->mesh = plane_mesh;
@@ -239,7 +250,7 @@ void load() {
     snow_mat->emissive = Vec3(1.5, 1.5, 1.5);
     snow_mat->side = Ink::DOUBLE_SIDE;
     snow_emitter = new Ink::ParticleInstance(
-            0.01,
+            0.02,
             [&](Ink::Particle &p, Ink::Instance* ref){
                 p.lifetime = 30;
                 p.vers.push_back(Vec3(0, 0, 0));
@@ -452,9 +463,7 @@ void particle_update(float dt) {
 
 void update(float dt) {
 
-#ifdef MULTI_PLAYER
-    network_update(dt);
-#endif
+    if(MULTI_PLAYER) network_update(dt);
     input_update(dt);
     kinetic_update(dt);
     particle_update(dt);
