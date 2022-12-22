@@ -73,7 +73,7 @@ void main() {
     float s4 = length(rgb - color_4);
     float s5 = length(rgb - color_5);
     float min_s = min(min(min(min(s1, s2), s3), s4), s5);
-    out_color = s1 == min_s ? vec4(color_1, 0.) :
+	out_color = s1 == min_s ? vec4(color_1, 0.) :
                 s2 == min_s ? vec4(color_2, 0.) :
                 s3 == min_s ? vec4(color_3, 0.) :
                 s4 == min_s ? vec4(color_4, 0.) :

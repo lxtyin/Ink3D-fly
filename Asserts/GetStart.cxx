@@ -11,13 +11,14 @@
 using Ink::Vec3;
 
 #define M_PATH "Asserts/models/"
-#define P_PATH "Asserts/images/"a
+#define P_PATH "Asserts/images/"
 
 int VP_WIDTH = 1440;
 int VP_HEIGHT = 900;
 string REMOTE_IP = "127.0.0.1";
 int REMOTE_PORT = 7777;
 bool MULTI_PLAYER = false;
+bool STYLIZE = false;
 
 #define USE_FORWARD_PATH 0
 
@@ -72,6 +73,7 @@ void get_config_txt(){
 		if(name == "VP_WIDTH") fin >> VP_WIDTH;
 		if(name == "VP_HEIGHT") fin >> VP_HEIGHT;
 		if(name == "MULTI_PLAYER") fin >> MULTI_PLAYER;
+		if(name == "STYLIZE") fin >> STYLIZE;
 	}
 	fin.close();
 }
@@ -153,28 +155,50 @@ void renderer_load() {
 	light_pass->set_buffer_d(buffers + 4);
 	light_pass->set_target(post_target_0);
 
-	stylize_pass = new StylizePass();
-	stylize_pass->init();
-	stylize_pass->set_texture(post_map_0);
-	stylize_pass->set_target(post_target_1);
+	if(STYLIZE) {
+		stylize_pass = new StylizePass();
+		stylize_pass->init();
+		stylize_pass->set_texture(post_map_0);
+		stylize_pass->set_target(post_target_1);
 
-	bloom_pass = new Ink::BloomPass(VP_WIDTH, VP_HEIGHT);
-	bloom_pass->init();
-	bloom_pass->threshold = 0.75;
-	bloom_pass->radius = 0.5;
-	bloom_pass->intensity = 5;
-	bloom_pass->set_texture(post_map_1);
-	bloom_pass->set_target(post_target_0);
+		bloom_pass = new Ink::BloomPass(VP_WIDTH, VP_HEIGHT);
+		bloom_pass->init();
+		bloom_pass->threshold = 0.75;
+		bloom_pass->radius = 0.5;
+		bloom_pass->intensity = 5;
+		bloom_pass->set_texture(post_map_1);
+		bloom_pass->set_target(post_target_0);
 
-	tone_map_pass = new Ink::ToneMapPass();
-	tone_map_pass->init();
-	tone_map_pass->mode = Ink::ACES_FILMIC_TONE_MAP;
-	tone_map_pass->set_texture(post_map_0);
-	tone_map_pass->set_target(post_target_1);
+		tone_map_pass = new Ink::ToneMapPass();
+		tone_map_pass->init();
+		tone_map_pass->mode = Ink::ACES_FILMIC_TONE_MAP;
+		tone_map_pass->set_texture(post_map_0);
+		tone_map_pass->set_target(post_target_1);
 
-	fxaa_pass = new Ink::FXAAPass();
-	fxaa_pass->init();
-	fxaa_pass->set_texture(post_map_1);
+		fxaa_pass = new Ink::FXAAPass();
+		fxaa_pass->init();
+		fxaa_pass->set_texture(post_map_1);
+	}
+	else {
+		bloom_pass = new Ink::BloomPass(VP_WIDTH, VP_HEIGHT);
+		bloom_pass->init();
+		bloom_pass->threshold = 0.4;
+		bloom_pass->radius = 0.5;
+		bloom_pass->intensity = 1;
+		bloom_pass->set_texture(post_map_0);
+		bloom_pass->set_target(post_target_1);
+
+		tone_map_pass = new Ink::ToneMapPass();
+		tone_map_pass->init();
+		tone_map_pass->mode = Ink::ACES_FILMIC_TONE_MAP;
+		tone_map_pass->set_texture(post_map_1);
+		tone_map_pass->set_target(post_target_0);
+
+		fxaa_pass = new Ink::FXAAPass();
+		fxaa_pass->init();
+		fxaa_pass->set_texture(post_map_0);
+	}
+
 #endif
 	images["Skybox_PX"] = Ink::Loader::load_image(P_PATH "sky_px.png");
 	images["Skybox_PY"] = Ink::Loader::load_image(P_PATH "sky_py.png");
@@ -207,7 +231,7 @@ void load() {
 	plane_mesh->groups[0].name = "plane_material";
 	plane_material = new Ink::Material("plane_material");
 	if(MULTI_PLAYER) plane_material->emissive = hash_color(remote->local_id);
-	else plane_material->emissive = Vec3(0.6, 0.6, 0.6);
+	else plane_material->emissive = hash_color(0);
 	plane->rotation.order = Ink::EULER_YXZ;
 	plane->rotation.y = M_PI_2;
 	plane->mesh = plane_mesh;
@@ -453,7 +477,7 @@ void renderer_update(float dt){
 #if !USE_FORWARD_PATH
 	light_pass->set(&scene, &viewer.get_camera());
 	light_pass->render();
-	stylize_pass->render();
+	if(STYLIZE) stylize_pass->render();
 	bloom_pass->render();
 	tone_map_pass->render();
 	fxaa_pass->render();

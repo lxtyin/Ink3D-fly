@@ -25,12 +25,13 @@ inline int to_int(const string &str){
 }
 
 inline Vec3 hash_color(int id){
-    Ink::Random::set_seed(id);
-    Vec3 res = Vec3::random();
-    res.x = abs(res.x);
-    res.y = abs(res.y);
-    res.z = abs(res.z);
-    return res;
+	Vec3 colors[6] = {{1, 0.5, 0.87},
+					  {0.5, 0.58, 1},
+					  {0.46, 0.94, 0.88},
+					  {0.46, 0.94, 0.53},
+					  {1, 0.89, 0.31},
+					  {1, 0.35, 0.35}};
+    return colors[id % 6];
 }
 
 struct Message {
